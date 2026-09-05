@@ -292,8 +292,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
     const comando = client.commands.get(interaction.commandName);
     if (!comando) return;
 
-    if (interaction.channelId === client.config.canalVerificar && interaction.commandName !== 'verificar') {
-      return interaction.reply({ content: 'En este canal solo puedes usar /verificar.', ephemeral: true });
+    if (interaction.channelId === client.config.canalVerificar && interaction.commandName !== 'verificar' && interaction.commandName !== 'setup') {
+      return interaction.reply({ content: 'En este canal solo puedes usar /verificar y /setup.', ephemeral: true });
     }
 
     if (interaction.commandName !== 'verificar' && !esPersonal(interaction.member, client.config)) {
