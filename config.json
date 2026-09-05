@@ -4,10 +4,13 @@
   "canalBienvenidas": "",
   "mensajeBienvenida": "👋 ¡Bienvenido/a {mention} a **{server}**! Usa `/verificar` para elegir tu rango y dejar tu nombre.",
   "rangos": {
-    "Tester": "",
-    "Beta Tester": "",
-    "Community Manager": "",
-    "Moderador": "",
-    "Admin": ""
+    "Test": "1545439263922069514",
+    "Miembro": "1545439302249615510",
+    "Sublider": "1545439336634257449",
+    "Lider": "1545439379261235321",
+    "Auxiliar": "1545439411137675314",
+    "Admin": "1545439447271874570",
+    "Responsable": "1545439491710394488",
+    "Master": "1545439533318017167"
   }
 }
