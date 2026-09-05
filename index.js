@@ -38,23 +38,11 @@ function configDe(guildId) {
 client.configDe = configDe;
 
 const ARCHIVO_REVISION = path.join(__dirname, 'revision.json');
-const ARCHIVO_SETUP = path.join(__dirname, 'setup_messages.json');
 let verificacionesPendientes = {};
 try {
   verificacionesPendientes = JSON.parse(fs.readFileSync(ARCHIVO_REVISION, 'utf8'));
 } catch {
   verificacionesPendientes = {};
-}
-
-let mensajesSetup = {};
-try {
-  mensajesSetup = JSON.parse(fs.readFileSync(ARCHIVO_SETUP, 'utf8'));
-} catch {
-  mensajesSetup = {};
-}
-
-function guardarSetups() {
-  fs.writeFileSync(ARCHIVO_SETUP, JSON.stringify(mensajesSetup, null, 2));
 }
 
 function guardarRevisiones() {
@@ -108,16 +96,21 @@ async function publicarSetupEn(guild) {
   const canal = guild.channels.cache.get(config.canalVerificar);
   if (!canal?.isTextBased()) return;
 
-  const estructura = construirSetup();
-
-  if (mensajesSetup[guild.id]) {
+  try {
+    const mensajes = await canal.messages.fetch({ limit: 20 });
+    const yaExiste = mensajes.some(
+      (m) =>
+        m.author.id === client.user.id &&
+        (m.components.some((fila) => fila.components.some((c) => c.customId === 'verificar_boton')))
+    );
+    if (yaExiste) return;
+  } catch (error) {
+    console.error(`No pude revisar el setup en ${guild.name}:`, error.message);
     return;
   }
 
   try {
-    const nuevo = await canal.send(estructura);
-    mensajesSetup[guild.id] = nuevo.id;
-    guardarSetups();
+    await canal.send(construirSetup());
   } catch (error) {
     console.error(`No pude publicar el setup en ${guild.name}:`, error.message);
   }
