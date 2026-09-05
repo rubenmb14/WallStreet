@@ -124,7 +124,10 @@ client.once(Events.ClientReady, async (c) => {
   c.user.setActivity('registrando miembros');
   try {
     const rest = new REST().setToken(process.env.DISCORD_TOKEN);
-    const cuerpo = client.commands.map((comando) => comando.data.toJSON());
+    const cuerpo = client.commands.map((comando) => {
+      comando.data.setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+      return comando.data.toJSON();
+    });
     for (const guild of c.guilds.cache.values()) {
       await rest.put(Routes.applicationGuildCommands(c.application.id, guild.id), { body: cuerpo });
       console.log(`Comandos registrados en ${guild.name} (${guild.id}).`);
@@ -424,46 +427,6 @@ async function manejarRevision(interaction) {
   }
 }
 
-async function manejarReporte(interaction) {
-  const config = configDe(interaction.guildId);
-  if (!esPersonal(interaction.member, config) && !interaction.member.permissions.has(PermissionFlagsBits.ManageMessages)) {
-    return interaction.reply({ content: 'No tienes permiso para gestionar reportes.', ephemeral: true });
-  }
-
-  const embed = interaction.message.embeds[0];
-  const campoUsuario = embed?.fields?.find((f) => f.name === '👤 Usuario reportado')?.value || '';
-  const match = campoUsuario.match(/<@(\d+)>/);
-  const objetivoId = match?.[1] || null;
-
-  if (interaction.customId === 'reporte_cerrar') {
-    await interaction.message.edit({ components: [] });
-    return interaction.reply({
-      content: `Reporte cerrado por <@${interaction.user.id}>.`,
-      ephemeral: true,
-    });
-  }
-
-  if (interaction.customId === 'reporte_ban') {
-    if (!objetivoId) {
-      return interaction.reply({ content: 'Este reporte no tiene usuario vinculado.', ephemeral: true });
-    }
-    try {
-      const miembro = await interaction.guild.members.fetch(objetivoId).catch(() => null);
-      const motivo = `Reportado por <@${interaction.user.id}> (reporte ${interaction.message.id})`;
-      await interaction.guild.members.ban(objetivoId, { reason: motivo });
-      await interaction.message.edit({ components: [] });
-      const dm = miembro?.user
-        ? `🚫 Has sido **baneado** de ${interaction.guild.name}. Si crees que es un error, apela a la administración.`
-        : null;
-      if (dm) {
-        await miembro.user.send(dm).catch(() => {});
-      }
-      return interaction.reply({ content: `🚫 <@${objetivoId}> fue baneado.`, ephemeral: true });
-    } catch {
-      return interaction.reply({ content: 'No pude bannear al usuario.', ephemeral: true });
-    }
-  }
-}
 
 client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.isChatInputCommand()) {
@@ -511,11 +474,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
   if (interaction.isButton() && (interaction.customId === 'verif_aceptar' || interaction.customId === 'verif_denegar')) {
     await manejarRevision(interaction);
-    return;
-  }
-
-  if (interaction.isButton() && (interaction.customId === 'reporte_cerrar' || interaction.customId === 'reporte_ban')) {
-    await manejarReporte(interaction);
     return;
   }
 
