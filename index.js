@@ -32,6 +32,11 @@ const client = new Client({
 client.commands = new Collection();
 client.config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
 
+function configDe(guildId) {
+  return (client.config.servidores || {})[guildId] || {};
+}
+client.configDe = configDe;
+
 const ARCHIVO_REVISION = path.join(__dirname, 'revision.json');
 let verificacionesPendientes = {};
 try {
@@ -72,42 +77,40 @@ client.once(Events.ClientReady, async (c) => {
   c.user.setActivity('registrando miembros');
   try {
     const rest = new REST().setToken(process.env.DISCORD_TOKEN);
-    await rest.put(Routes.applicationGuildCommands(c.application.id, process.env.GUILD_ID), {
-      body: client.commands.map((comando) => comando.data.toJSON()),
-    });
-    console.log(`${client.commands.size} comandos registrados correctamente.`);
+    const cuerpo = client.commands.map((comando) => comando.data.toJSON());
+    for (const guild of c.guilds.cache.values()) {
+      await rest.put(Routes.applicationGuildCommands(c.application.id, guild.id), { body: cuerpo });
+      console.log(`Comandos registrados en ${guild.name} (${guild.id}).`);
+    }
+    console.log(`${client.commands.size} comandos por servidor.`);
   } catch (error) {
     console.error('Error al registrar los comandos:', error);
   }
 });
 
 client.on(Events.GuildMemberAdd, async (miembro) => {
-  const { config } = client;
+  const config = configDe(miembro.guild.id);
+  const mensajeBase = config.mensajeBienvenida || client.config.mensajeBienvenida;
 
   const canal = config.canalBienvenidas
     ? miembro.guild.channels.cache.get(config.canalBienvenidas)
     : null;
 
   if (canal?.isTextBased()) {
-    const mensaje = (config.mensajeBienvenida || '¡Bienvenido/a {mention}!')
-      .replace('{mention}', miembro.toString())
-      .replace('{server}', miembro.guild.name);
-    canal.send(mensaje).catch(() => {});
+    canal.send(mensajeBase.replace('{mention}', miembro.toString()).replace('{server}', miembro.guild.name)).catch(() => {});
   }
 
-  if (config.autoDmAlUnirse) {
-    const dm = (config.mensajeBienvenida || '¡Bienvenido/a {mention}!')
-      .replace('{mention}', miembro.user.username)
-      .replace('{server}', miembro.guild.name)
-      .replace(/\/verificar/g, '`/verificar`');
-    miembro.send(dm).catch(() => {});
+  if (client.config.autoDmAlUnirse) {
+    miembro
+      .send(mensajeBase.replace('{mention}', `<@${miembro.user.id}>`).replace('{server}', miembro.guild.name))
+      .catch(() => {});
   }
 });
 
 const pendientesPorUsuario = new Map();
 
-function construirSelectRoles() {
-  const opciones = Object.entries(client.config.rangos)
+function construirSelectRoles(config) {
+  const opciones = Object.entries(config.rangos || {})
     .filter(([, id]) => id)
     .map(([label, id]) => new StringSelectMenuOptionBuilder().setLabel(label).setValue(id));
 
@@ -121,39 +124,39 @@ function construirSelectRoles() {
 }
 
 async function manejarVerificacion(interaction) {
-  const { config } = client;
+  const config = configDe(interaction.guildId);
   const canalVerificar = interaction.guild.channels.cache.get(config.canalVerificar);
 
-  if (interaction.channelId !== config.canalVerificar) {
+  if (!config.canalVerificar || interaction.channelId !== config.canalVerificar) {
     return interaction.reply({
-      content: `Solo puedes usar /verificar en ${canalVerificar ? canalVerificar.toString() : 'el canal de verificación'}.`,
+      content: `Solo puedes usar /verificar en ${canalVerificar ? canalVerificar.toString() : 'el canal de verificación de este servidor'}.`,
       ephemeral: true,
     });
   }
 
   const nombre = interaction.fields.getTextInputValue('nombre').trim();
 
-  pendientesPorUsuario.set(interaction.user.id, { nombre });
+  pendientesPorUsuario.set(`${interaction.guildId}:${interaction.user.id}`, { nombre });
 
   await interaction.reply({
     content: '📋 Marca los roles que te corresponden:',
-    components: [construirSelectRoles()],
+    components: [construirSelectRoles(config)],
     ephemeral: true,
   });
 }
 
 async function manejarSeleccionRoles(interaction) {
-  const { config } = client;
+  const config = configDe(interaction.guildId);
   const canalVerificar = interaction.guild.channels.cache.get(config.canalVerificar);
 
-  if (interaction.channelId !== config.canalVerificar) {
+  if (!config.canalVerificar || interaction.channelId !== config.canalVerificar) {
     return interaction.update({
-      content: `Solo puedes usar esto en ${canalVerificar ? canalVerificar.toString() : 'el canal de verificación'}.`,
+      content: `Solo puedes usar esto en ${canalVerificar ? canalVerificar.toString() : 'el canal de verificación de este servidor'}.`,
       components: [],
     });
   }
 
-  const pendiente = pendientesPorUsuario.get(interaction.user.id);
+  const pendiente = pendientesPorUsuario.get(`${interaction.guildId}:${interaction.user.id}`);
   if (!pendiente) {
     return interaction.update({
       content: 'Esta solicitud ya caducó. Vuelve a usar /verificar.',
@@ -165,14 +168,14 @@ async function manejarSeleccionRoles(interaction) {
   if (!rolesMarcados.length) {
     return interaction.update({
       content: 'Marca al menos un rol.',
-      components: [construirSelectRoles()],
+      components: [construirSelectRoles(config)],
     });
   }
 
   const canalRevision = interaction.guild.channels.cache.get(config.canalRevision);
-  if (!canalRevision?.isTextBased()) {
+  if (!config.canalRevision || !canalRevision?.isTextBased()) {
     return interaction.update({
-      content: 'Configura el canal de revisión (canalRevision) en config.json.',
+      content: 'Este servidor aún no tiene configurado el canal de revisión. Avisa al staff.',
       components: [],
     });
   }
@@ -204,7 +207,7 @@ async function manejarSeleccionRoles(interaction) {
   };
   guardarRevisiones();
 
-  pendientesPorUsuario.delete(interaction.user.id);
+  pendientesPorUsuario.delete(`${interaction.guildId}:${interaction.user.id}`);
 
   await interaction.update({
     content: '✅ Tu solicitud se ha enviado. Un responsable la revisará y, si la acepta, recibirás tu rol.',
@@ -213,15 +216,16 @@ async function manejarSeleccionRoles(interaction) {
 }
 
 async function manejarRevision(interaction) {
-  const { config } = client;
   const registro = verificacionesPendientes[interaction.message.id];
-
-  if (!esPersonal(interaction.member, config) && !interaction.member.permissions.has(PermissionFlagsBits.ManageMessages)) {
-    return interaction.reply({ content: 'No tienes permiso para decidir sobre esta solicitud.', ephemeral: true });
-  }
 
   if (!registro) {
     return interaction.reply({ content: 'Esta solicitud ya fue resuelta.', ephemeral: true });
+  }
+
+  const config = configDe(registro.guildId);
+
+  if (!esPersonal(interaction.member, config) && !interaction.member.permissions.has(PermissionFlagsBits.ManageMessages)) {
+    return interaction.reply({ content: 'No tienes permiso para decidir sobre esta solicitud.', ephemeral: true });
   }
 
   const esAceptar = interaction.customId === 'verif_aceptar';
@@ -263,8 +267,8 @@ async function manejarRevision(interaction) {
       }
       const rolesExistentes = registro.roles.filter((id) => interaction.guild.roles.cache.has(id));
       const rolesAAsignar = [...rolesExistentes];
-      if (client.config.rolVerificado && interaction.guild.roles.cache.has(client.config.rolVerificado)) {
-        rolesAAsignar.push(client.config.rolVerificado);
+      if (config.rolVerificado && interaction.guild.roles.cache.has(config.rolVerificado)) {
+        rolesAAsignar.push(config.rolVerificado);
       }
       if (rolesAAsignar.length) {
         try {
@@ -297,11 +301,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
     const comando = client.commands.get(interaction.commandName);
     if (!comando) return;
 
-    if (interaction.channelId === client.config.canalVerificar && interaction.commandName !== 'verificar' && interaction.commandName !== 'setup') {
+    const config = configDe(interaction.guildId);
+
+    if (interaction.channelId === config.canalVerificar && interaction.commandName !== 'verificar' && interaction.commandName !== 'setup') {
       return interaction.reply({ content: 'En este canal solo puedes usar /verificar y /setup.', ephemeral: true });
     }
 
-    if (interaction.commandName !== 'verificar' && !esPersonal(interaction.member, client.config)) {
+    if (interaction.commandName !== 'verificar' && !esPersonal(interaction.member, config)) {
       return interaction.reply({ content: 'No tienes permiso para usar este comando.', ephemeral: true });
     }
 
@@ -335,10 +341,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 
   if (interaction.isButton() && interaction.customId === 'verificar_boton') {
-    if (interaction.channelId !== client.config.canalVerificar) {
-      const canal = interaction.guild.channels.cache.get(client.config.canalVerificar);
+    const config = configDe(interaction.guildId);
+
+    if (!config.canalVerificar || interaction.channelId !== config.canalVerificar) {
+      const canal = interaction.guild.channels.cache.get(config.canalVerificar);
       return interaction.reply({
-        content: `Solo puedes verificarte en ${canal ? canal.toString() : 'el canal de verificación'}. Usa /verificar ahí.`,
+        content: `Solo puedes verificarte en ${canal ? canal.toString() : 'el canal de verificación de este servidor'}. Usa /verificar ahí.`,
         ephemeral: true,
       });
     }

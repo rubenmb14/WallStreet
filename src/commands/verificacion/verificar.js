@@ -5,9 +5,6 @@ const {
   TextInputStyle,
   ActionRowBuilder,
 } = require('discord.js');
-const path = require('node:path');
-
-const CONFIG = require(path.join(__dirname, '..', '..', '..', 'config.json'));
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -15,10 +12,12 @@ module.exports = {
     .setDescription('Completa tu registro: escribe tu nombre y marca tus roles'),
 
   async execute(interaction) {
-    if (interaction.channelId !== CONFIG.canalVerificar) {
-      const canal = interaction.guild.channels.cache.get(CONFIG.canalVerificar);
+    const config = interaction.client.configDe(interaction.guildId);
+
+    if (!config.canalVerificar || interaction.channelId !== config.canalVerificar) {
+      const canal = interaction.guild.channels.cache.get(config.canalVerificar);
       return interaction.reply({
-        content: `Solo puedes usar /verificar en ${canal ? canal.toString() : 'el canal de verificación'}.`,
+        content: `Solo puedes usar /verificar en ${canal ? canal.toString() : 'el canal de verificación de este servidor'}.`,
         ephemeral: true,
       });
     }

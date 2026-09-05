@@ -1,23 +1,16 @@
 {
   "apodoConRango": true,
   "autoDmAlUnirse": true,
-  "rolVerificado": "1545597158869307443",
-  "canalBienvenidas": "",
-  "canalVerificar": "1545596233454977145",
-  "canalRevision": "1545591894082584616",
-  "mensajeBienvenida": "¡Bienvenido/a {mention} a WallStreet-NextRP! Recuerda verificarte en https://discord.com/channels/1545438612856905748/1545596233454977145",
-  "rolesStaff": [
-    "1545439136763355156",
-    "1545439576028618962"
-  ],
-  "rangos": {
-    "Test": "1545439263922069514",
-    "Miembro": "1545439302249615510",
-    "Sublider": "1545439336634257449",
-    "Lider": "1545439379261235321",
-    "Auxiliar": "1545439411137675314",
-    "Admin": "1545439447271874570",
-    "Responsable": "1545439491710394488",
-    "Master": "1545439533318017167"
+  "mensajeBienvenida": "¡Bienvenido/a {mention} a WallStreet-NextRP! Recuerda verificarte en https://discord.com/channels/1545794465468260453/1545799033623150593",
+  "servidores": {
+    "1545794465468260453": {
+      "canalVerificar": "1545799033623150593",
+      "canalRevision": "",
+      "rolVerificado": "",
+      "canalBienvenidas": "",
+      "mensajeBienvenida": "",
+      "rolesStaff": [],
+      "rangos": {}
+    }
   }
 }
