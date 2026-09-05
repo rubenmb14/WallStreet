@@ -164,6 +164,15 @@ client.once(Events.ClientReady, async (c) => {
     await publicarSetupEn(guild);
   }
   console.log('Setups publicados en los servidores configurados.');
+
+  for (const guild of c.guilds.cache.values()) {
+    await enviarAlerta(
+      guild,
+      '✅ **El bot se ha iniciado correctamente.** Sistema de logs y alertas activos.',
+      0x57f287,
+      '🚀 Estado del bot'
+    );
+  }
 });
 
 client.on(Events.GuildMemberAdd, async (miembro) => {

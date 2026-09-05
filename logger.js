@@ -696,9 +696,9 @@ function initLogger(client) {
     registrarEvento(interaction.guild?.id, interaction.user.id, 'comando', `Usó /${interaction.commandName}`);
   });
 
-  bot.on(Events.ShardsAll, () => {
+  bot.on(Events.ShardResume, (id) => {
     for (const guild of bot.guilds.cache.values()) {
-      alertaDe(bot, guild, '✅ **El bot se ha reconectado a Discord.**', 0x57f287, '📡 Estado del bot');
+      alertaDe(bot, guild, `✅ **El shard ${id} se ha reconectado a Discord.**`, 0x57f287, '📡 Estado del bot');
     }
   });
 
