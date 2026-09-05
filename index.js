@@ -89,8 +89,16 @@ client.once(Events.ClientReady, async (c) => {
 });
 
 client.on(Events.GuildMemberAdd, async (miembro) => {
+  if (miembro.user.bot) return;
+
   const config = configDe(miembro.guild.id);
   const mensajeBase = config.mensajeBienvenida || client.config.mensajeBienvenida;
+
+  if (config.rolSinVerificar && miembro.guild.roles.cache.has(config.rolSinVerificar)) {
+    try {
+      await miembro.roles.add(config.rolSinVerificar);
+    } catch {}
+  }
 
   const canal = config.canalBienvenidas
     ? miembro.guild.channels.cache.get(config.canalBienvenidas)
@@ -275,6 +283,13 @@ async function manejarRevision(interaction) {
           await miembro.roles.add(rolesAAsignar);
         } catch {
           avisos.push('No pude asignar los roles.');
+        }
+      }
+      if (config.rolSinVerificar && miembro.roles.cache.has(config.rolSinVerificar)) {
+        try {
+          await miembro.roles.remove(config.rolSinVerificar);
+        } catch {
+          avisos.push('No pude quitar el rol de sin verificar.');
         }
       }
       miembro
