@@ -163,7 +163,6 @@ function construirSetup() {
 }
 
 const TITULO_LISTA_COMANDOS = '📜 Comandos del bot';
-const MARCA_LISTA_COMANDOS = 'ComandosStaff v2';
 
 function construirListaComandos() {
   const embed = new EmbedBuilder()
@@ -203,8 +202,7 @@ function construirListaComandos() {
         ].join('\n'),
         inline: false,
       }
-    )
-    .setFooter({ text: MARCA_LISTA_COMANDOS });
+    );
 
   return { embeds: [embed] };
 }
@@ -218,12 +216,13 @@ async function publicarListaComandosEn(guild) {
 
   try {
     const mensajes = await canal.messages.fetch({ limit: 20 });
-    const yaExiste = mensajes.some(
-      (m) =>
-        m.author.id === client.user.id &&
-        m.embeds.some((e) => e.footer?.text === MARCA_LISTA_COMANDOS)
+    const existente = mensajes.find(
+      (m) => m.author.id === client.user.id && m.embeds.some((e) => e.title === TITULO_LISTA_COMANDOS)
     );
-    if (yaExiste) return;
+    if (existente) {
+      await existente.edit(construirListaComandos()).catch(() => {});
+      return;
+    }
   } catch (error) {
     console.error(`No pude revisar la lista de comandos en ${guild.name}:`, error.message);
     return;
