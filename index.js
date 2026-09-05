@@ -173,7 +173,21 @@ function construirSelectRoles(config) {
 
   const select = new StringSelectMenuBuilder()
     .setCustomId('verificar_roles')
-    .setPlaceholder('Marca los roles que te corresponden')
+    .setPlaceholder('¿Cuál es tu rango en WallStreet?')
+    .setMinValues(1)
+    .addOptions(opciones);
+
+  return new ActionRowBuilder().addComponents(select);
+}
+
+function construirSelectEquipos(config) {
+  const opciones = Object.entries(config.equipos || {})
+    .filter(([, id]) => id)
+    .map(([label, id]) => new StringSelectMenuOptionBuilder().setLabel(label).setValue(id));
+
+  const select = new StringSelectMenuBuilder()
+    .setCustomId('verificar_equipo')
+    .setPlaceholder('¿En qué equipo estás?')
     .setMinValues(1)
     .addOptions(opciones);
 
@@ -229,6 +243,44 @@ async function manejarSeleccionRoles(interaction) {
     });
   }
 
+  const clave = `${interaction.guildId}:${interaction.user.id}`;
+  pendiente.rango = rolesMarcados;
+
+  if (config.equipos && Object.keys(config.equipos).length) {
+    return interaction.update({
+      content: '🏟️ ¿En qué equipo de WallStreet estás?',
+      components: [construirSelectEquipos(config)],
+    });
+  }
+
+  await enviarSolicitud(interaction, config, clave, pendiente, rolesMarcados);
+}
+
+async function manejarSeleccionEquipo(interaction) {
+  const config = configDe(interaction.guildId);
+
+  const clave = `${interaction.guildId}:${interaction.user.id}`;
+  const pendiente = pendientesPorUsuario.get(clave);
+  if (!pendiente) {
+    return interaction.update({
+      content: 'Esta solicitud ya caducó. Vuelve a usar /verificar.',
+      components: [],
+    });
+  }
+
+  const equiposMarcados = interaction.values || [];
+  if (!equiposMarcados.length) {
+    return interaction.update({
+      content: 'Selecciona tu equipo.',
+      components: [construirSelectEquipos(config)],
+    });
+  }
+
+  const rolesFinales = [...(pendiente.rango || []), ...equiposMarcados];
+  await enviarSolicitud(interaction, config, clave, pendiente, rolesFinales);
+}
+
+async function enviarSolicitud(interaction, config, clave, pendiente, rolesMarcados) {
   const canalRevision = interaction.guild.channels.cache.get(config.canalRevision);
   if (!config.canalRevision || !canalRevision?.isTextBased()) {
     return interaction.update({
@@ -264,7 +316,7 @@ async function manejarSeleccionRoles(interaction) {
   };
   guardarRevisiones();
 
-  pendientesPorUsuario.delete(`${interaction.guildId}:${interaction.user.id}`);
+  pendientesPorUsuario.delete(clave);
 
   await interaction.update({
     content: '✅ Tu solicitud se ha enviado. Un responsable la revisará y, si la acepta, recibirás tu rol.',
@@ -396,6 +448,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
   if (interaction.isStringSelectMenu() && interaction.customId === 'verificar_roles') {
     await manejarSeleccionRoles(interaction);
+    return;
+  }
+
+  if (interaction.isStringSelectMenu() && interaction.customId === 'verificar_equipo') {
+    await manejarSeleccionEquipo(interaction);
     return;
   }
 
