@@ -19,6 +19,7 @@ const {
   TextInputBuilder,
   TextInputStyle,
 } = require('discord.js');
+const logger = require('./logger');
 
 const client = new Client({
   intents: [
@@ -26,6 +27,7 @@ const client = new Client({
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildVoiceStates,
   ],
 });
 
@@ -71,6 +73,7 @@ function cargarComandos(dir) {
 }
 
 cargarComandos(path.join(__dirname, 'src', 'commands'));
+logger.initLogger(client);
 
 function construirSetup() {
   const embed = new EmbedBuilder()
@@ -354,6 +357,15 @@ async function manejarRevision(interaction) {
 
   const miembro = await interaction.guild.members.fetch(registro.userId).catch(() => null);
 
+  logger.registrarEvento(
+    interaction.guildId,
+    registro.userId,
+    esAceptar ? 'verificacion' : 'verificacion_denegada',
+    esAceptar
+      ? `Verificado por <@${interaction.user.id}> (roles: ${registro.roles.length})`
+      : `Verificación denegada por <@${interaction.user.id}>`
+  );
+
   if (esAceptar) {
     const avisos = [];
     const botMiembro = interaction.guild.members.me;
@@ -412,6 +424,47 @@ async function manejarRevision(interaction) {
   }
 }
 
+async function manejarReporte(interaction) {
+  const config = configDe(interaction.guildId);
+  if (!esPersonal(interaction.member, config) && !interaction.member.permissions.has(PermissionFlagsBits.ManageMessages)) {
+    return interaction.reply({ content: 'No tienes permiso para gestionar reportes.', ephemeral: true });
+  }
+
+  const embed = interaction.message.embeds[0];
+  const campoUsuario = embed?.fields?.find((f) => f.name === '👤 Usuario reportado')?.value || '';
+  const match = campoUsuario.match(/<@(\d+)>/);
+  const objetivoId = match?.[1] || null;
+
+  if (interaction.customId === 'reporte_cerrar') {
+    await interaction.message.edit({ components: [] });
+    return interaction.reply({
+      content: `Reporte cerrado por <@${interaction.user.id}>.`,
+      ephemeral: true,
+    });
+  }
+
+  if (interaction.customId === 'reporte_ban') {
+    if (!objetivoId) {
+      return interaction.reply({ content: 'Este reporte no tiene usuario vinculado.', ephemeral: true });
+    }
+    try {
+      const miembro = await interaction.guild.members.fetch(objetivoId).catch(() => null);
+      const motivo = `Reportado por <@${interaction.user.id}> (reporte ${interaction.message.id})`;
+      await interaction.guild.members.ban(objetivoId, { reason: motivo });
+      await interaction.message.edit({ components: [] });
+      const dm = miembro?.user
+        ? `🚫 Has sido **baneado** de ${interaction.guild.name}. Si crees que es un error, apela a la administración.`
+        : null;
+      if (dm) {
+        await miembro.user.send(dm).catch(() => {});
+      }
+      return interaction.reply({ content: `🚫 <@${objetivoId}> fue baneado.`, ephemeral: true });
+    } catch {
+      return interaction.reply({ content: 'No pude bannear al usuario.', ephemeral: true });
+    }
+  }
+}
+
 client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.isChatInputCommand()) {
     const comando = client.commands.get(interaction.commandName);
@@ -458,6 +511,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
   if (interaction.isButton() && (interaction.customId === 'verif_aceptar' || interaction.customId === 'verif_denegar')) {
     await manejarRevision(interaction);
+    return;
+  }
+
+  if (interaction.isButton() && (interaction.customId === 'reporte_cerrar' || interaction.customId === 'reporte_ban')) {
+    await manejarReporte(interaction);
     return;
   }
 

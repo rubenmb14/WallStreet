@@ -17,6 +17,11 @@
         "1545798788923523182",
         "1545798793537265844"
       ],
+      "canalLogs": "1545844033899991050",
+      "canalReportes": "",
+      "diasCuentaSospechosa": 3,
+      "excluirCanalesLog": [],
+      "excluirRolesLog": [],
       "rangos": {
         "Resp. WallStreet": "1545798839641051146",
         "ADM WS": "1545798793537265844",

@@ -3,3 +3,4 @@ node_modules/
 bot.log
 revision.json
 setup_messages.json
+historial.json
