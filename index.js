@@ -13,6 +13,8 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  StringSelectMenuBuilder,
+  StringSelectMenuOptionBuilder,
 } = require('discord.js');
 
 const client = new Client({
@@ -98,6 +100,22 @@ client.on(Events.GuildMemberAdd, async (miembro) => {
   }
 });
 
+const pendientesPorUsuario = new Map();
+
+function construirSelectRoles() {
+  const opciones = Object.entries(client.config.rangos)
+    .filter(([, id]) => id)
+    .map(([label, id]) => new StringSelectMenuOptionBuilder().setLabel(label).setValue(id));
+
+  const select = new StringSelectMenuBuilder()
+    .setCustomId('verificar_roles')
+    .setPlaceholder('Marca los roles que te corresponden')
+    .setMinValues(1)
+    .addOptions(opciones);
+
+  return new ActionRowBuilder().addComponents(select);
+}
+
 async function manejarVerificacion(interaction) {
   const { config } = client;
   const canalVerificar = interaction.guild.channels.cache.get(config.canalVerificar);
@@ -110,15 +128,49 @@ async function manejarVerificacion(interaction) {
   }
 
   const nombre = interaction.fields.getTextInputValue('nombre').trim();
-  const rolesMarcados = interaction.fields.getSelectMenuValues('roles');
 
+  pendientesPorUsuario.set(interaction.user.id, { nombre });
+
+  await interaction.reply({
+    content: '📋 Marca los roles que te corresponden:',
+    components: [construirSelectRoles()],
+    ephemeral: true,
+  });
+}
+
+async function manejarSeleccionRoles(interaction) {
+  const { config } = client;
+  const canalVerificar = interaction.guild.channels.cache.get(config.canalVerificar);
+
+  if (interaction.channelId !== config.canalVerificar) {
+    return interaction.update({
+      content: `Solo puedes usar esto en ${canalVerificar ? canalVerificar.toString() : 'el canal de verificación'}.`,
+      components: [],
+    });
+  }
+
+  const pendiente = pendientesPorUsuario.get(interaction.user.id);
+  if (!pendiente) {
+    return interaction.update({
+      content: 'Esta solicitud ya caducó. Vuelve a usar /verificar.',
+      components: [],
+    });
+  }
+
+  const rolesMarcados = interaction.values || [];
   if (!rolesMarcados.length) {
-    return interaction.reply({ content: 'Marca al menos un rol.', ephemeral: true });
+    return interaction.update({
+      content: 'Marca al menos un rol.',
+      components: [construirSelectRoles()],
+    });
   }
 
   const canalRevision = interaction.guild.channels.cache.get(config.canalRevision);
   if (!canalRevision?.isTextBased()) {
-    return interaction.reply({ content: 'Configura el canal de revisión (canalRevision) en config.json.', ephemeral: true });
+    return interaction.update({
+      content: 'Configura el canal de revisión (canalRevision) en config.json.',
+      components: [],
+    });
   }
 
   const embed = new EmbedBuilder()
@@ -127,7 +179,7 @@ async function manejarVerificacion(interaction) {
     .setThumbnail(interaction.user.displayAvatarURL({ size: 256 }))
     .addFields(
       { name: '👤 Usuario', value: `<@${interaction.user.id}> (\`${interaction.user.id}\`)`, inline: true },
-      { name: '✏️ Nombre', value: nombre, inline: true },
+      { name: '✏️ Nombre', value: pendiente.nombre, inline: true },
       { name: '🎖️ Roles solicitados', value: rolesMarcados.map((id) => `<@&${id}>`).join(' '), inline: false },
       { name: '🕐 Enviado', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }
     );
@@ -143,14 +195,16 @@ async function manejarVerificacion(interaction) {
     guildId: interaction.guildId,
     canalRevision: canalRevision.id,
     userId: interaction.user.id,
-    nombre,
+    nombre: pendiente.nombre,
     roles: rolesMarcados,
   };
   guardarRevisiones();
 
-  await interaction.reply({
+  pendientesPorUsuario.delete(interaction.user.id);
+
+  await interaction.update({
     content: '✅ Tu solicitud se ha enviado. Un responsable la revisará y, si la acepta, recibirás tu rol.',
-    ephemeral: true,
+    components: [],
   });
 }
 
@@ -243,6 +297,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
   if (interaction.isModalSubmit() && interaction.customId === 'verificar_modal') {
     await manejarVerificacion(interaction);
+    return;
+  }
+
+  if (interaction.isStringSelectMenu() && interaction.customId === 'verificar_roles') {
+    await manejarSeleccionRoles(interaction);
     return;
   }
 
