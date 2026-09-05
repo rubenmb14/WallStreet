@@ -3,6 +3,10 @@
   "autoDmAlUnirse": true,
   "canalBienvenidas": "",
   "mensajeBienvenida": "👋 ¡Bienvenido/a {mention} a **{server}**! Usa `/verificar` para elegir tu rango y dejar tu nombre.",
+  "rolesStaff": [
+    "1545439136763355156",
+    "1545439576028618962"
+  ],
   "rangos": {
     "Test": "1545439263922069514",
     "Miembro": "1545439302249615510",

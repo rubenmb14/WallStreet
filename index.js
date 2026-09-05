@@ -8,6 +8,7 @@ const {
   GatewayIntentBits,
   REST,
   Routes,
+  PermissionFlagsBits,
 } = require('discord.js');
 
 const client = new Client({
@@ -127,6 +128,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.isChatInputCommand()) {
     const comando = client.commands.get(interaction.commandName);
     if (!comando) return;
+
+    const esStaff =
+      interaction.member?.permissions.has(PermissionFlagsBits.Administrator) ||
+      (client.config.rolesStaff || []).some((id) => interaction.member?.roles.cache.has(id));
+
+    if (interaction.commandName !== 'verificar' && !esStaff) {
+      return interaction.reply({ content: 'No tienes permiso para usar este comando.', ephemeral: true });
+    }
+
     try {
       await comando.execute(interaction);
     } catch (error) {
