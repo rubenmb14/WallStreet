@@ -15,6 +15,9 @@ const {
   ButtonStyle,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
 } = require('discord.js');
 
 const client = new Client({
@@ -323,6 +326,33 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
   if (interaction.isButton() && (interaction.customId === 'verif_aceptar' || interaction.customId === 'verif_denegar')) {
     await manejarRevision(interaction);
+    return;
+  }
+
+  if (interaction.isButton() && interaction.customId === 'verificar_boton') {
+    if (interaction.channelId !== client.config.canalVerificar) {
+      const canal = interaction.guild.channels.cache.get(client.config.canalVerificar);
+      return interaction.reply({
+        content: `Solo puedes verificarte en ${canal ? canal.toString() : 'el canal de verificación'}. Usa /verificar ahí.`,
+        ephemeral: true,
+      });
+    }
+
+    const modal = new ModalBuilder()
+      .setCustomId('verificar_modal')
+      .setTitle('Verificación de miembro');
+
+    const nombre = new TextInputBuilder()
+      .setCustomId('nombre')
+      .setLabel('¿Cómo te llamas? (será tu apodo)')
+      .setStyle(TextInputStyle.Short)
+      .setRequired(true)
+      .setMinLength(1)
+      .setMaxLength(32);
+
+    modal.addComponents(new ActionRowBuilder().addComponents(nombre));
+
+    await interaction.showModal(modal);
     return;
   }
 });
