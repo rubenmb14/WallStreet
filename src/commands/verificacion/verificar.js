@@ -14,16 +14,24 @@ const CONFIG = require(path.join(__dirname, '..', '..', '..', 'config.json'));
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('verificar')
-    .setDescription('Completa tu registro: elige tu rango y escribe tu nombre'),
+    .setDescription('Completa tu registro: escribe tu nombre y marca tus roles'),
 
   async execute(interaction) {
-    const rangos = Object.keys(CONFIG.rangos);
+    if (interaction.channelId !== CONFIG.canalVerificar) {
+      const canal = interaction.guild.channels.cache.get(CONFIG.canalVerificar);
+      return interaction.reply({
+        content: `Solo puedes usar /verificar en ${canal ? canal.toString() : 'el canal de verificación'}.`,
+        ephemeral: true,
+      });
+    }
+
+    const rangos = Object.entries(CONFIG.rangos).filter(([, id]) => id);
 
     if (rangos.length === 0) {
-      return interaction.reply({ content: 'Aún no hay rangos configurados en config.json.', ephemeral: true });
+      return interaction.reply({ content: 'Aún no hay roles configurados en config.json.', ephemeral: true });
     }
     if (rangos.length > 25) {
-      return interaction.reply({ content: 'Hay más de 25 rangos configurados; deja 25 o menos y separa los cargos por rol.', ephemeral: true });
+      return interaction.reply({ content: 'Hay más de 25 roles configurados; deja 25 o menos.', ephemeral: true });
     }
 
     const modal = new ModalBuilder()
@@ -38,18 +46,19 @@ module.exports = {
       .setMinLength(1)
       .setMaxLength(32);
 
-    const rango = new StringSelectMenuBuilder()
-      .setCustomId('rango')
-      .setPlaceholder('Selecciona tu rango')
+    const roles = new StringSelectMenuBuilder()
+      .setCustomId('roles')
+      .setPlaceholder('Marca los roles que te corresponden')
+      .setMinValues(1)
       .addOptions(
-        rangos.map((nombreRango) =>
-          new StringSelectMenuOptionBuilder().setLabel(nombreRango).setValue(nombreRango)
+        rangos.map(([nombreRango, id]) =>
+          new StringSelectMenuOptionBuilder().setLabel(nombreRango).setValue(id)
         )
       );
 
     modal.addComponents(
       new ActionRowBuilder().addComponents(nombre),
-      new ActionRowBuilder().addComponents(rango)
+      new ActionRowBuilder().addComponents(roles)
     );
 
     await interaction.showModal(modal);

@@ -9,6 +9,10 @@ const {
   REST,
   Routes,
   PermissionFlagsBits,
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
 } = require('discord.js');
 
 const client = new Client({
@@ -22,6 +26,24 @@ const client = new Client({
 
 client.commands = new Collection();
 client.config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
+
+const ARCHIVO_REVISION = path.join(__dirname, 'revision.json');
+let verificacionesPendientes = {};
+try {
+  verificacionesPendientes = JSON.parse(fs.readFileSync(ARCHIVO_REVISION, 'utf8'));
+} catch {
+  verificacionesPendientes = {};
+}
+
+function guardarRevisiones() {
+  fs.writeFileSync(ARCHIVO_REVISION, JSON.stringify(verificacionesPendientes, null, 2));
+}
+
+function esPersonal(miembro, config) {
+  if (!miembro) return false;
+  if (miembro.permissions.has(PermissionFlagsBits.Administrator)) return true;
+  return (config.rolesStaff || []).some((id) => miembro.roles.cache.has(id));
+}
 
 function cargarComandos(dir) {
   const archivos = fs.readdirSync(dir);
@@ -78,50 +100,118 @@ client.on(Events.GuildMemberAdd, async (miembro) => {
 
 async function manejarVerificacion(interaction) {
   const { config } = client;
-  const nombre = interaction.fields.getTextInputValue('nombre').trim();
-  const rango = interaction.fields.getSelectMenuValues('rango')[0];
-  const rolId = config.rangos[rango];
+  const canalVerificar = interaction.guild.channels.cache.get(config.canalVerificar);
 
-  if (!rango) {
-    return interaction.reply({ content: 'No seleccionaste ningún rango.', ephemeral: true });
-  }
-
-  const rol = rolId
-    ? interaction.guild.roles.cache.get(rolId)
-    : interaction.guild.roles.cache.find((r) => r.name === rango);
-
-  if (!rol) {
+  if (interaction.channelId !== config.canalVerificar) {
     return interaction.reply({
-      content: `No encontré el rol **"${rango}"** en este servidor. Edita la sección "rangos" de \`config.json\` con el nombre o el ID correctos del rol. Usa \`/roles\` para verlos.`,
+      content: `Solo puedes usar /verificar en ${canalVerificar ? canalVerificar.toString() : 'el canal de verificación'}.`,
       ephemeral: true,
     });
   }
 
-  const apodo = config.apodoConRango ? `${rango} ${nombre}` : nombre;
-  const miembro = await interaction.member.fetch().catch(() => null);
-  if (!miembro) return;
+  const nombre = interaction.fields.getTextInputValue('nombre').trim();
+  const rolesMarcados = interaction.fields.getSelectMenuValues('roles');
 
-  const avisos = [];
-
-  try {
-    if (miembro.nickname !== apodo) {
-      await miembro.setNickname(apodo);
-    }
-  } catch {
-    avisos.push('No pude cambiar tu apodo (mira mis permisos o la jerarquía de roles).');
+  if (!rolesMarcados.length) {
+    return interaction.reply({ content: 'Marca al menos un rol.', ephemeral: true });
   }
 
-  if (!miembro.roles.cache.has(rol.id)) {
-    try {
-      await miembro.roles.add(rol);
-    } catch {
-      avisos.push(`No pude asignarte el rol **${rol.name}** (revisa mis permisos).`);
-    }
+  const canalRevision = interaction.guild.channels.cache.get(config.canalRevision);
+  if (!canalRevision?.isTextBased()) {
+    return interaction.reply({ content: 'Configura el canal de revisión (canalRevision) en config.json.', ephemeral: true });
   }
 
-  const partes = [`✅ ¡Verificado! Apodo: **${apodo}**`, `🎖️ Rol: **${rol.name}**`];
-  if (avisos.length) partes.push(...avisos);
-  await interaction.reply({ content: partes.join('\n'), ephemeral: true });
+  const embed = new EmbedBuilder()
+    .setTitle('📝 Solicitud de verificación')
+    .setColor(0x5865f2)
+    .setThumbnail(interaction.user.displayAvatarURL({ size: 256 }))
+    .addFields(
+      { name: '👤 Usuario', value: `<@${interaction.user.id}> (\`${interaction.user.id}\`)`, inline: true },
+      { name: '✏️ Nombre', value: nombre, inline: true },
+      { name: '🎖️ Roles solicitados', value: rolesMarcados.map((id) => `<@&${id}>`).join(' '), inline: false },
+      { name: '🕐 Enviado', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }
+    );
+
+  const filaBotones = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('verif_aceptar').setLabel('Aceptar').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId('verif_denegar').setLabel('Denegar').setStyle(ButtonStyle.Danger)
+  );
+
+  const mensaje = await canalRevision.send({ embeds: [embed], components: [filaBotones] });
+
+  verificacionesPendientes[mensaje.id] = {
+    guildId: interaction.guildId,
+    canalRevision: canalRevision.id,
+    userId: interaction.user.id,
+    nombre,
+    roles: rolesMarcados,
+  };
+  guardarRevisiones();
+
+  await interaction.reply({
+    content: '✅ Tu solicitud se ha enviado. Un responsable la revisará y, si la acepta, recibirás tu rol.',
+    ephemeral: true,
+  });
+}
+
+async function manejarRevision(interaction) {
+  const { config } = client;
+  const registro = verificacionesPendientes[interaction.message.id];
+
+  if (!esPersonal(interaction.member, config) && !interaction.member.permissions.has(PermissionFlagsBits.ManageMessages)) {
+    return interaction.reply({ content: 'No tienes permiso para decidir sobre esta solicitud.', ephemeral: true });
+  }
+
+  if (!registro) {
+    return interaction.reply({ content: 'Esta solicitud ya fue resuelta.', ephemeral: true });
+  }
+
+  const esAceptar = interaction.customId === 'verif_aceptar';
+
+  delete verificacionesPendientes[interaction.message.id];
+  guardarRevisiones();
+
+  const embedOriginal = interaction.message.embeds[0];
+  const embedFinal = EmbedBuilder.from(embedOriginal)
+    .setColor(esAceptar ? 0x57f287 : 0xed4245)
+    .addFields({
+      name: '⚖️ Decisión',
+      value: esAceptar ? `✅ Aceptada por <@${interaction.user.id}>` : `❌ Denegada por <@${interaction.user.id}>`,
+      inline: false,
+    });
+  await interaction.message.edit({ embeds: [embedFinal], components: [] });
+
+  const miembro = await interaction.guild.members.fetch(registro.userId).catch(() => null);
+
+  if (esAceptar) {
+    const avisos = [];
+    if (miembro) {
+      try {
+        await miembro.setNickname(registro.nombre);
+      } catch {
+        avisos.push('No pude cambiar el apodo.');
+      }
+      const rolesExistentes = registro.roles.filter((id) => interaction.guild.roles.cache.has(id));
+      if (rolesExistentes.length) {
+        try {
+          await miembro.roles.add(rolesExistentes);
+        } catch {
+          avisos.push('No pude asignar los roles.');
+        }
+      }
+      miembro
+        .send(`✅ ¡Tu verificación fue **aceptada** en ${interaction.guild.name}!${avisos.length ? ` ${avisos.join(' ')}` : ''}`)
+        .catch(() => {});
+    }
+    await interaction.reply({ content: '✅ Solicitud aceptada. El miembro ya tiene su rol.', ephemeral: true });
+  } else {
+    if (miembro) {
+      miembro
+        .send(`❌ Tu verificación fue **denegada** en ${interaction.guild.name}. Contacta con un responsable.`)
+        .catch(() => {});
+    }
+    await interaction.reply({ content: '❌ Solicitud denegada.', ephemeral: true });
+  }
 }
 
 client.on(Events.InteractionCreate, async (interaction) => {
@@ -129,11 +219,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
     const comando = client.commands.get(interaction.commandName);
     if (!comando) return;
 
-    const esStaff =
-      interaction.member?.permissions.has(PermissionFlagsBits.Administrator) ||
-      (client.config.rolesStaff || []).some((id) => interaction.member?.roles.cache.has(id));
+    if (interaction.channelId === client.config.canalVerificar && interaction.commandName !== 'verificar') {
+      return interaction.reply({ content: 'En este canal solo puedes usar /verificar.', ephemeral: true });
+    }
 
-    if (interaction.commandName !== 'verificar' && !esStaff) {
+    if (interaction.commandName !== 'verificar' && !esPersonal(interaction.member, client.config)) {
       return interaction.reply({ content: 'No tienes permiso para usar este comando.', ephemeral: true });
     }
 
@@ -153,6 +243,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
   if (interaction.isModalSubmit() && interaction.customId === 'verificar_modal') {
     await manejarVerificacion(interaction);
+    return;
+  }
+
+  if (interaction.isButton() && (interaction.customId === 'verif_aceptar' || interaction.customId === 'verif_denegar')) {
+    await manejarRevision(interaction);
+    return;
   }
 });
 
