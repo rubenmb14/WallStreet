@@ -1,5 +1,21 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 
+const MAX = 4096;
+
+function trocear(texto, size) {
+  const partes = [];
+  let actual = '';
+  for (const linea of texto.split('\n')) {
+    if ((actual + linea + '\n').length > size) {
+      partes.push(actual.trimEnd());
+      actual = '';
+    }
+    actual += linea + '\n';
+  }
+  if (actual.trim()) partes.push(actual.trimEnd());
+  return partes;
+}
+
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('roles')
@@ -7,17 +23,27 @@ module.exports = {
 
   async execute(interaction) {
     const { guild } = interaction;
-    const roles = [...guild.roles.cache.values()]
+    const lista = [...guild.roles.cache.values()]
       .sort((a, b) => b.position - a.position)
       .filter((r) => r.name !== '@everyone')
       .map((r) => `${r} \`${r.id}\``)
-      .join('\n');
+      .join('\n') || 'No hay roles.';
 
-    const embed = new EmbedBuilder()
-      .setTitle(`Roles de ${guild.name} (${guild.roles.cache.size - 1})`)
-      .setColor(0x5865f2)
-      .setDescription(roles || 'No hay roles.');
+    const partes = trocear(lista, MAX);
 
-    await interaction.reply({ embeds: [embed] });
+    await interaction.reply({
+      embeds: [
+        new EmbedBuilder()
+          .setTitle(`Roles de ${guild.name} (${guild.roles.cache.size - 1})`)
+          .setColor(0x5865f2)
+          .setDescription(partes[0]),
+      ],
+    });
+
+    for (const parte of partes.slice(1)) {
+      await interaction.channel.send({
+        embeds: [new EmbedBuilder().setColor(0x5865f2).setDescription(parte)],
+      });
+    }
   },
 };
