@@ -1,6 +1,7 @@
 {
   "apodoConRango": true,
   "autoDmAlUnirse": true,
+  "dmCambiosUserId": "658328516340875302",
   "mensajeBienvenida": "¡Bienvenido/a {mention} a WallStreet-NextRP! Recuerda verificarte en https://discord.com/channels/1545794465468260453/1545799033623150593",
   "servidores": {
     "1545794465468260453": {

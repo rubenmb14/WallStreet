@@ -71,6 +71,56 @@ function guardarRevisiones() {
   fs.writeFileSync(ARCHIVO_REVISION, JSON.stringify(verificacionesPendientes, null, 2));
 }
 
+const ARCHIVO_CHANGELOG = path.join(__dirname, 'CHANGELOG.md');
+const ARCHIVO_NOTIFICADO = path.join(__dirname, 'changelog_notificado.json');
+let changelogNotificadas = [];
+try {
+  changelogNotificadas = JSON.parse(fs.readFileSync(ARCHIVO_NOTIFICADO, 'utf8')).notificadas || [];
+} catch {
+  changelogNotificadas = [];
+}
+
+function seccionesChangelog() {
+  if (!fs.existsSync(ARCHIVO_CHANGELOG)) return [];
+  const secciones = [];
+  let actual = null;
+  for (const linea of fs.readFileSync(ARCHIVO_CHANGELOG, 'utf8').split(/\r?\n/)) {
+    const m = linea.match(/^##\s+(.+)$/);
+    if (m) {
+      actual = { titulo: m[1].trim(), contenido: [] };
+      secciones.push(actual);
+    } else if (actual) {
+      actual.contenido.push(linea);
+    }
+  }
+  return secciones.filter((s) => s.contenido.some((l) => l.trim()));
+}
+
+async function notificarCambios(c) {
+  const uid = client.config.dmCambiosUserId;
+  if (!uid) return;
+  const secciones = seccionesChangelog();
+  const nuevas = secciones.filter((s) => !changelogNotificadas.includes(s.titulo));
+  if (!nuevas.length) return;
+  try {
+    const usuario = await c.users.fetch(uid);
+    for (const s of nuevas) {
+      await usuario.send({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(0x5865f2)
+            .setTitle(`📢 ${s.titulo}`)
+            .setDescription(s.contenido.map((l) => l.trim()).filter(Boolean).join('\n')),
+        ],
+      });
+    }
+    changelogNotificadas = changelogNotificadas.concat(nuevas.map((s) => s.titulo));
+    fs.writeFileSync(ARCHIVO_NOTIFICADO, JSON.stringify({ notificadas: changelogNotificadas }, null, 2));
+  } catch (error) {
+    console.error('No pude notificar cambios por MD:', error.message);
+  }
+}
+
 function esPersonal(miembro, config) {
   if (!miembro) return false;
   if (miembro.permissions.has(PermissionFlagsBits.Administrator)) return true;
@@ -175,6 +225,8 @@ client.once(Events.ClientReady, async (c) => {
       '🚀 Estado del bot'
     );
   }
+
+  await notificarCambios(c);
 });
 
 client.on(Events.GuildMemberAdd, async (miembro) => {
