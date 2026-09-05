@@ -2,7 +2,7 @@
   "apodoConRango": true,
   "autoDmAlUnirse": true,
   "canalBienvenidas": "",
-  "canalVerificar": "1545591562430320680",
+  "canalVerificar": "1545596233454977145",
   "canalRevision": "1545591894082584616",
   "mensajeBienvenida": "👋 ¡Bienvenido/a {mention} a **{server}**! Usa `/verificar` para elegir tu rango y dejar tu nombre.",
   "rolesStaff": [
