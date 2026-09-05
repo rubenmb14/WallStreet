@@ -109,14 +109,9 @@ async function publicarSetupEn(guild) {
   if (!canal?.isTextBased()) return;
 
   const estructura = construirSetup();
-  const guardado = mensajesSetup[guild.id];
 
-  if (guardado) {
-    try {
-      const mensaje = await canal.messages.fetch(guardado);
-      await mensaje.edit(estructura);
-      return;
-    } catch {}
+  if (mensajesSetup[guild.id]) {
+    return;
   }
 
   try {
