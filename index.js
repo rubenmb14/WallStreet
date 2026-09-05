@@ -39,6 +39,26 @@ function configDe(guildId) {
 }
 client.configDe = configDe;
 
+async function enviarAlerta(guild, mensaje, color = 0xed4245, autor = '⚠️ Alerta del bot') {
+  if (!guild) return;
+  const config = configDe(guild.id);
+  if (!config.canalAlertas) return;
+  const canal = guild.channels.cache.get(config.canalAlertas);
+  if (!canal?.isTextBased()) return;
+  try {
+    await canal.send({
+      embeds: [
+        new EmbedBuilder()
+          .setColor(color)
+          .setAuthor({ name: autor })
+          .setDescription(mensaje)
+          .setTimestamp(),
+      ],
+    });
+  } catch {}
+}
+client.enviarAlerta = enviarAlerta;
+
 const ARCHIVO_REVISION = path.join(__dirname, 'revision.json');
 let verificacionesPendientes = {};
 try {
@@ -135,6 +155,9 @@ client.once(Events.ClientReady, async (c) => {
     console.log(`${client.commands.size} comandos por servidor.`);
   } catch (error) {
     console.error('Error al registrar los comandos:', error);
+    for (const guild of c.guilds.cache.values()) {
+      await enviarAlerta(guild, `⚠️ **Error al registrar los comandos:**\n\`\`\`${String(error.message || error).slice(0, 500)}\`\`\``, 0xed4245, '🛑 Error');
+    }
   }
 
   for (const guild of c.guilds.cache.values()) {
