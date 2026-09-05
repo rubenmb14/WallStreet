@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -16,7 +16,8 @@ module.exports = {
     )
     .addStringOption((opcion) =>
       opcion.setName('razon').setDescription('Motivo del baneo')
-    ),
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers),
   async execute(interaction) {
     const usuario = interaction.options.getUser('usuario', true);
     const dias = interaction.options.getInteger('borrar_mensajes') ?? 0;

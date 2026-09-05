@@ -162,6 +162,56 @@ function construirSetup() {
   return { embeds: [embed], components: [fila] };
 }
 
+const TITULO_LISTA_COMANDOS = '📜 Comandos del bot';
+
+function construirListaComandos() {
+  const embed = new EmbedBuilder()
+    .setTitle(TITULO_LISTA_COMANDOS)
+    .setDescription('Comandos disponibles del bot WallStreet.')
+    .setColor(0x5865f2)
+    .addFields(
+      { name: '🔨 Moderación', value: '`/ban` · `/unban` · `/kick` · `/timeout` · `/clear`', inline: false },
+      {
+        name: '🛡️ Verificación',
+        value: '`/setup` publica el botón Verificar · `/verificar` inicia la verificación',
+        inline: false,
+      },
+      {
+        name: '🧰 Utilidad',
+        value: '`/anuncio` · `/roles` · `/historial` · `/avatar` · `/userinfo` · `/serverinfo` · `/encuesta`',
+        inline: false,
+      }
+    )
+    .setFooter({ text: 'ComandosStaff' });
+
+  return { embeds: [embed] };
+}
+
+async function publicarListaComandosEn(guild) {
+  const config = configDe(guild.id);
+  if (!config.canalComandosLista) return;
+
+  const canal = guild.channels.cache.get(config.canalComandosLista);
+  if (!canal?.isTextBased()) return;
+
+  try {
+    const mensajes = await canal.messages.fetch({ limit: 20 });
+    const yaExiste = mensajes.some(
+      (m) => m.author.id === client.user.id && m.embeds.some((e) => e.title === TITULO_LISTA_COMANDOS)
+    );
+    if (yaExiste) return;
+  } catch (error) {
+    console.error(`No pude revisar la lista de comandos en ${guild.name}:`, error.message);
+    return;
+  }
+
+  try {
+    await canal.send(construirListaComandos());
+  } catch (error) {
+    console.error(`No pude publicar la lista de comandos en ${guild.name}:`, error.message);
+  }
+}
+
 async function publicarSetupEn(guild) {
   const config = configDe(guild.id);
   if (!config.canalVerificar) return;
@@ -194,7 +244,12 @@ client.once(Events.ClientReady, async (c) => {
   c.user.setActivity('registrando miembros');
   try {
     const rest = new REST().setToken(process.env.DISCORD_TOKEN);
-    const cuerpo = client.commands.map((comando) => comando.data.toJSON());
+    const cuerpo = client.commands.map((comando) => {
+      if (!comando.permisoManual) {
+        comando.data.setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+      }
+      return comando.data.toJSON();
+    });
     for (const guild of c.guilds.cache.values()) {
       await rest.put(Routes.applicationGuildCommands(c.application.id, guild.id), { body: cuerpo });
       console.log(`Comandos registrados en ${guild.name} (${guild.id}).`);
@@ -209,6 +264,7 @@ client.once(Events.ClientReady, async (c) => {
 
   for (const guild of c.guilds.cache.values()) {
     await publicarSetupEn(guild);
+    await publicarListaComandosEn(guild);
   }
   console.log('Setups publicados en los servidores configurados.');
 

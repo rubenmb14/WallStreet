@@ -1,5 +1,10 @@
 # CHANGELOG — WallStreet Bot
 
+## v5 — Comandos y cambios por privado
+- Mensaje con la lista de comandos publicado automáticamente en el canal de comandos del staff.
+- Comandos de nuevo ocultos para usuarios normales (solo los ve el personal autorizado).
+- El bot notifica por privado cada versión nueva de este changelog.
+
 ## v1 — Verificación
 - Sistema para que los miembros se identifiquen en el servidor con botón de "Verificar".
 - Asignación de rangos según corresponda.
