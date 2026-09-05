@@ -38,11 +38,23 @@ function configDe(guildId) {
 client.configDe = configDe;
 
 const ARCHIVO_REVISION = path.join(__dirname, 'revision.json');
+const ARCHIVO_SETUP = path.join(__dirname, 'setup_messages.json');
 let verificacionesPendientes = {};
 try {
   verificacionesPendientes = JSON.parse(fs.readFileSync(ARCHIVO_REVISION, 'utf8'));
 } catch {
   verificacionesPendientes = {};
+}
+
+let mensajesSetup = {};
+try {
+  mensajesSetup = JSON.parse(fs.readFileSync(ARCHIVO_SETUP, 'utf8'));
+} catch {
+  mensajesSetup = {};
+}
+
+function guardarSetups() {
+  fs.writeFileSync(ARCHIVO_SETUP, JSON.stringify(mensajesSetup, null, 2));
 }
 
 function guardarRevisiones() {
@@ -72,6 +84,50 @@ function cargarComandos(dir) {
 
 cargarComandos(path.join(__dirname, 'src', 'commands'));
 
+function construirSetup() {
+  const embed = new EmbedBuilder()
+    .setTitle('🏦 WallStreet')
+    .setDescription('Verificate para solicitar permisos')
+    .setColor(0x5865f2);
+
+  const fila = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('verificar_boton')
+      .setLabel('Verificar')
+      .setStyle(ButtonStyle.Primary)
+      .setEmoji('✅')
+  );
+
+  return { embeds: [embed], components: [fila] };
+}
+
+async function publicarSetupEn(guild) {
+  const config = configDe(guild.id);
+  if (!config.canalVerificar) return;
+
+  const canal = guild.channels.cache.get(config.canalVerificar);
+  if (!canal?.isTextBased()) return;
+
+  const estructura = construirSetup();
+  const guardado = mensajesSetup[guild.id];
+
+  if (guardado) {
+    try {
+      const mensaje = await canal.messages.fetch(guardado);
+      await mensaje.edit(estructura);
+      return;
+    } catch {}
+  }
+
+  try {
+    const nuevo = await canal.send(estructura);
+    mensajesSetup[guild.id] = nuevo.id;
+    guardarSetups();
+  } catch (error) {
+    console.error(`No pude publicar el setup en ${guild.name}:`, error.message);
+  }
+}
+
 client.once(Events.ClientReady, async (c) => {
   console.log(`WallStreet conectado como ${c.user.tag}`);
   c.user.setActivity('registrando miembros');
@@ -86,6 +142,11 @@ client.once(Events.ClientReady, async (c) => {
   } catch (error) {
     console.error('Error al registrar los comandos:', error);
   }
+
+  for (const guild of c.guilds.cache.values()) {
+    await publicarSetupEn(guild);
+  }
+  console.log('Setups publicados en los servidores configurados.');
 });
 
 client.on(Events.GuildMemberAdd, async (miembro) => {
