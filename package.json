@@ -1,0 +1,14 @@
+{
+  "name": "wallstreet",
+  "version": "1.0.0",
+  "description": "Bot de Discord WallStreet: verificación de miembros por rango, moderación y utilidad",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "deploy": "node src/deploy-commands.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.27.0",
+    "dotenv": "^17.4.2"
+  }
+}

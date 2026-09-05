@@ -1,0 +1,13 @@
+{
+  "apodoConRango": true,
+  "autoDmAlUnirse": true,
+  "canalBienvenidas": "",
+  "mensajeBienvenida": "👋 ¡Bienvenido/a {mention} a **{server}**! Usa `/verificar` para elegir tu rango y dejar tu nombre.",
+  "rangos": {
+    "Tester": "",
+    "Beta Tester": "",
+    "Community Manager": "",
+    "Moderador": "",
+    "Admin": ""
+  }
+}
