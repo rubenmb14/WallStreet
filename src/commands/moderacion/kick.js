@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -9,8 +9,7 @@ module.exports = {
     )
     .addStringOption((opcion) =>
       opcion.setName('razon').setDescription('Motivo de la expulsión')
-    )
-    .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers),
+    ),
   async execute(interaction) {
     const usuario = interaction.options.getUser('usuario', true);
     const razon = interaction.options.getString('razon') ?? 'Sin motivo especificado';

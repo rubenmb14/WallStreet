@@ -194,12 +194,7 @@ client.once(Events.ClientReady, async (c) => {
   c.user.setActivity('registrando miembros');
   try {
     const rest = new REST().setToken(process.env.DISCORD_TOKEN);
-    const cuerpo = client.commands.map((comando) => {
-      if (!comando.permisoManual) {
-        comando.data.setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
-      }
-      return comando.data.toJSON();
-    });
+    const cuerpo = client.commands.map((comando) => comando.data.toJSON());
     for (const guild of c.guilds.cache.values()) {
       await rest.put(Routes.applicationGuildCommands(c.application.id, guild.id), { body: cuerpo });
       console.log(`Comandos registrados en ${guild.name} (${guild.id}).`);

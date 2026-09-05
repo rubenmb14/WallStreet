@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -6,8 +6,7 @@ module.exports = {
     .setDescription('Desbanea a un usuario usando su ID')
     .addStringOption((opcion) =>
       opcion.setName('id').setDescription('ID del usuario a desbanear').setRequired(true)
-    )
-    .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers),
+    ),
   async execute(interaction) {
     const id = interaction.options.getString('id', true);
     try {

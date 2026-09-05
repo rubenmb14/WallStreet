@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -17,8 +17,7 @@ module.exports = {
     )
     .addStringOption((opcion) =>
       opcion.setName('razon').setDescription('Motivo del silencio')
-    )
-    .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
+    ),
   async execute(interaction) {
     const usuario = interaction.options.getUser('usuario', true);
     const minutos = interaction.options.getInteger('minutos', true);
