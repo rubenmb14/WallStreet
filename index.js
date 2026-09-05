@@ -394,7 +394,7 @@ async function manejarRevision(interaction) {
         }
       }
       miembro
-        .send(`✅ ¡Tu verificación fue **aceptada** en ${interaction.guild.name}!\nTu rol ha sido asignado.${avisos.length ? `\n⚠️ ${avisos.join('\n⚠️ ')}` : ''}`)
+        .send(`✅ ¡Tu verificación fue **aceptada** en ${interaction.guild.name}! Tu rol ha sido asignado. Aceptado por <@${interaction.user.id}>${avisos.length ? `\n⚠️ ${avisos.join('\n⚠️ ')}` : ''}`)
         .catch(() => {});
     }
 
@@ -405,7 +405,7 @@ async function manejarRevision(interaction) {
   } else {
     if (miembro) {
       miembro
-        .send(`❌ Tu verificación fue **denegada** en ${interaction.guild.name}. Contacta con un responsable.`)
+        .send(`❌ Tu verificación fue **denegada** en ${interaction.guild.name}. Denegado por <@${interaction.user.id}>`)
         .catch(() => {});
     }
     await interaction.reply({ content: '❌ Solicitud denegada.', ephemeral: true });
