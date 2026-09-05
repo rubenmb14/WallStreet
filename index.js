@@ -83,6 +83,16 @@ client.once(Events.ClientReady, async (c) => {
 
 client.on(Events.GuildMemberAdd, async (miembro) => {
   const { config } = client;
+
+  if (config.rolAlEntrar) {
+    const rol = miembro.guild.roles.cache.get(config.rolAlEntrar);
+    if (rol) {
+      miembro.roles.add(rol).catch(() => {
+        console.error(`No pude asignar el rol ${rol.name} a ${miembro.user.tag} al entrar.`);
+      });
+    }
+  }
+
   const canal = config.canalBienvenidas
     ? miembro.guild.channels.cache.get(config.canalBienvenidas)
     : null;
