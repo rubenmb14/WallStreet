@@ -1,11 +1,11 @@
 {
   "apodoConRango": true,
   "autoDmAlUnirse": true,
-  "rolAlEntrar": "1545597158869307443",
+  "rolVerificado": "1545597158869307443",
   "canalBienvenidas": "",
   "canalVerificar": "1545596233454977145",
   "canalRevision": "1545591894082584616",
-  "mensajeBienvenida": "👋 ¡Bienvenido/a {mention} a **{server}**! Usa `/verificar` para elegir tu rango y dejar tu nombre.",
+  "mensajeBienvenida": "¡Bienvenido/a {mention} a WallStreet-NextRP! Recuerda verificarte en https://discord.com/channels/1545438612856905748/1545596233454977145",
   "rolesStaff": [
     "1545439136763355156",
     "1545439576028618962"

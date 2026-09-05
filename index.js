@@ -84,15 +84,6 @@ client.once(Events.ClientReady, async (c) => {
 client.on(Events.GuildMemberAdd, async (miembro) => {
   const { config } = client;
 
-  if (config.rolAlEntrar) {
-    const rol = miembro.guild.roles.cache.get(config.rolAlEntrar);
-    if (rol) {
-      miembro.roles.add(rol).catch(() => {
-        console.error(`No pude asignar el rol ${rol.name} a ${miembro.user.tag} al entrar.`);
-      });
-    }
-  }
-
   const canal = config.canalBienvenidas
     ? miembro.guild.channels.cache.get(config.canalBienvenidas)
     : null;
@@ -271,9 +262,13 @@ async function manejarRevision(interaction) {
         avisos.push('No pude cambiar el apodo del usuario.');
       }
       const rolesExistentes = registro.roles.filter((id) => interaction.guild.roles.cache.has(id));
-      if (rolesExistentes.length) {
+      const rolesAAsignar = [...rolesExistentes];
+      if (client.config.rolVerificado && interaction.guild.roles.cache.has(client.config.rolVerificado)) {
+        rolesAAsignar.push(client.config.rolVerificado);
+      }
+      if (rolesAAsignar.length) {
         try {
-          await miembro.roles.add(rolesExistentes);
+          await miembro.roles.add(rolesAAsignar);
         } catch {
           avisos.push('No pude asignar los roles.');
         }
