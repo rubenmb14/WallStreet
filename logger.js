@@ -170,42 +170,77 @@ function initLogger(client) {
 
   bot.on(Events.GuildMemberUpdate, async (antesM, nuevoM) => {
     if (nuevoM.user.bot) return;
-    const cambios = [];
+    const otrosCambios = [];
 
     const rolesAñadidos = nuevoM.roles.cache.filter((r) => !antesM.roles.cache.has(r.id));
     const rolesQuitados = antesM.roles.cache.filter((r) => !nuevoM.roles.cache.has(r.id));
-    if (rolesAñadidos.size) {
-      cambios.push(`➕ <@&${rolesAñadidos.firstKey()}>`);
-      registrarEvento(nuevoM.guild.id, nuevoM.id, 'rol', `Añadido: ${rolesAñadidos.map((r) => r.name).join(', ')}`);
-    }
-    if (rolesQuitados.size) {
-      cambios.push(`➖ <@&${rolesQuitados.firstKey()}>`);
-      registrarEvento(nuevoM.guild.id, nuevoM.id, 'rol', `Quitado: ${rolesQuitados.map((r) => r.name).join(', ')}`);
+
+    if (rolesAñadidos.size || rolesQuitados.size) {
+      let ejecutor = null;
+      try {
+        const { entries } = await nuevoM.guild.fetchAuditLogs({ type: AuditLogEvent.MemberRoleUpdate, limit: 5 });
+        const entrada = entries.find((e) => e.target?.id === nuevoM.id);
+        ejecutor = entrada?.executor ?? null;
+      } catch {}
+
+      for (const rol of rolesAñadidos.values()) {
+        await logPara(bot, nuevoM.guild, {
+          embeds: [
+            new EmbedBuilder()
+              .setColor(0x57f287)
+              .setAuthor({ name: `Rol añadido a ${nuevoM.user.tag}`, iconURL: nuevoM.user.displayAvatarURL({ size: 128 }) })
+              .setDescription(`➕ <@&${rol.id}>`)
+              .addFields(
+                { name: '👤 Usuario', value: `<@${nuevoM.id}>`, inline: true },
+                { name: '🙋 Quién', value: ejecutor ? `<@${ejecutor.id}>` : 'desconocido', inline: true }
+              )
+              .setTimestamp(),
+          ],
+        });
+        registrarEvento(nuevoM.guild.id, nuevoM.id, 'rol', `Añadido: ${rol.name}${ejecutor ? ` por ${ejecutor.tag}` : ''}`);
+      }
+
+      for (const rol of rolesQuitados.values()) {
+        await logPara(bot, nuevoM.guild, {
+          embeds: [
+            new EmbedBuilder()
+              .setColor(0xffa657)
+              .setAuthor({ name: `Rol quitado a ${nuevoM.user.tag}`, iconURL: nuevoM.user.displayAvatarURL({ size: 128 }) })
+              .setDescription(`➖ <@&${rol.id}>`)
+              .addFields(
+                { name: '👤 Usuario', value: `<@${nuevoM.id}>`, inline: true },
+                { name: '🙋 Quién', value: ejecutor ? `<@${ejecutor.id}>` : 'desconocido', inline: true }
+              )
+              .setTimestamp(),
+          ],
+        });
+        registrarEvento(nuevoM.guild.id, nuevoM.id, 'rol', `Quitado: ${rol.name}${ejecutor ? ` por ${ejecutor.tag}` : ''}`);
+      }
     }
 
     if (antesM.nickname !== nuevoM.nickname) {
-      cambios.push(`🏷️ Apodo: **${antesM.nickname || 'sin apodo'}** → **${nuevoM.nickname || 'sin apodo'}**`);
+      otrosCambios.push(`🏷️ Apodo: **${antesM.nickname || 'sin apodo'}** → **${nuevoM.nickname || 'sin apodo'}**`);
       registrarEvento(nuevoM.guild.id, nuevoM.id, 'apodo', `"${antesM.nickname || ''}" → "${nuevoM.nickname || ''}"`);
     }
 
     if (antesM.communicationDisabledUntil !== nuevoM.communicationDisabledUntil) {
       if (nuevoM.communicationDisabledUntil) {
-        cambios.push(`⏳ **Timeout** hasta <t:${Math.floor(nuevoM.communicationDisabledUntil.getTime() / 1000)}:F>`);
+        otrosCambios.push(`⏳ **Timeout** hasta <t:${Math.floor(nuevoM.communicationDisabledUntil.getTime() / 1000)}:F>`);
         registrarEvento(nuevoM.guild.id, nuevoM.id, 'timeout', 'Timeout puesto');
       } else {
-        cambios.push(`▶️ **Timeout quitado**`);
+        otrosCambios.push(`▶️ **Timeout quitado**`);
         registrarEvento(nuevoM.guild.id, nuevoM.id, 'timeout', 'Timeout quitado');
       }
     }
 
-    if (!cambios.length) return;
+    if (!otrosCambios.length) return;
 
     await logPara(bot, nuevoM.guild, {
       embeds: [
         new EmbedBuilder()
-          .setColor(0xffa657)
+          .setColor(0x5865f2)
           .setAuthor({ name: `${nuevoM.user.tag} actualizado`, iconURL: nuevoM.user.displayAvatarURL({ size: 128 }) })
-          .setDescription(cambios.join('\n'))
+          .setDescription(otrosCambios.join('\n'))
           .setTimestamp(),
       ],
     });
