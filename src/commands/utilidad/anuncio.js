@@ -12,7 +12,7 @@ module.exports = {
   permisoManual: true,
 
   data: new SlashCommandBuilder()
-    .setName('anuncio-equipo')
+    .setName('anuncio')
     .setDescription('Publica un mensaje en el canal y lo envía por privado al equipo elegido')
     .addStringOption((o) =>
       o
@@ -58,6 +58,7 @@ module.exports = {
 
     await interaction.editReply({ embeds: [embed] });
 
+    await interaction.guild.members.fetch();
     const miembros = interaction.guild.members.cache.filter((m) => m.roles.cache.has(equipoId));
     const rolMencion = `<@&${equipoId}>`;
 
