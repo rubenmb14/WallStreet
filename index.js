@@ -239,11 +239,23 @@ async function manejarRevision(interaction) {
 
   if (esAceptar) {
     const avisos = [];
+    const botMiembro = interaction.guild.members.me;
+    const tieneGestionarApodos = botMiembro?.permissions.has(PermissionFlagsBits.ManageNicknames);
+
+    if (!tieneGestionarApodos) {
+      avisos.push('El bot necesita el permiso **Gestionar apodos** (Manage Nicknames) para cambiar el nombre.');
+    }
+
     if (miembro) {
+      const posicionBot = botMiembro?.roles.highest.position ?? 0;
+      const posicionMiembro = miembro.roles.highest.position ?? 0;
+      if (posicionMiembro >= posicionBot) {
+        avisos.push('El rol del bot debe estar **por encima** del rol más alto de este usuario para cambiarle el apodo.');
+      }
       try {
         await miembro.setNickname(registro.nombre);
       } catch {
-        avisos.push('No pude cambiar el apodo.');
+        avisos.push('No pude cambiar el apodo del usuario.');
       }
       const rolesExistentes = registro.roles.filter((id) => interaction.guild.roles.cache.has(id));
       if (rolesExistentes.length) {
@@ -254,10 +266,14 @@ async function manejarRevision(interaction) {
         }
       }
       miembro
-        .send(`✅ ¡Tu verificación fue **aceptada** en ${interaction.guild.name}!${avisos.length ? ` ${avisos.join(' ')}` : ''}`)
+        .send(`✅ ¡Tu verificación fue **aceptada** en ${interaction.guild.name}!\nTu rol ha sido asignado.${avisos.length ? `\n⚠️ ${avisos.join('\n⚠️ ')}` : ''}`)
         .catch(() => {});
     }
-    await interaction.reply({ content: '✅ Solicitud aceptada. El miembro ya tiene su rol.', ephemeral: true });
+
+    await interaction.reply({
+      content: `✅ Solicitud aceptada.${avisos.length ? `\n⚠️ ${avisos.join('\n⚠️ ')}` : '\nEl miembro ya tiene su rol.'}`,
+      ephemeral: true,
+    });
   } else {
     if (miembro) {
       miembro
