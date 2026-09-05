@@ -145,7 +145,9 @@ client.once(Events.ClientReady, async (c) => {
   try {
     const rest = new REST().setToken(process.env.DISCORD_TOKEN);
     const cuerpo = client.commands.map((comando) => {
-      comando.data.setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+      if (!comando.permisoManual) {
+        comando.data.setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+      }
       return comando.data.toJSON();
     });
     for (const guild of c.guilds.cache.values()) {
