@@ -67,6 +67,15 @@ async function obtenerEjecutor(guild, tipoAudit, objetivoId) {
   }
 }
 
+function tipoCanal(canal) {
+  if (canal.type === ChannelType.GuildText || canal.type === ChannelType.GuildAnnouncement) return 'texto';
+  if (canal.type === ChannelType.GuildVoice || canal.type === ChannelType.GuildStageVoice) return 'voz';
+  if (canal.type === ChannelType.GuildCategory) return 'categoría';
+  if (canal.type === ChannelType.GuildForum) return 'foro';
+  if (canal.type === ChannelType.PublicThread || canal.type === ChannelType.PrivateThread) return 'hilo';
+  return 'otro';
+}
+
 async function actualizarCacheInvitaciones(guild) {
   try {
     const inv = await guild.invites.fetch();
@@ -333,13 +342,18 @@ function initLogger(client) {
     if (antesG.icon !== nuevoG.icon) cambios.push(`🖼️ Icono actualizado`);
     if (antesG.banner !== nuevoG.banner) cambios.push(`🖼️ Banner actualizado`);
     if (antesG.description !== nuevoG.description) cambios.push(`📝 Descripción: ${nuevoG.description || 'eliminada'}`);
+    if (antesG.splash !== nuevoG.splash) cambios.push(`🌊 Splash screen: ${nuevoG.splash ? 'enlazada' : 'eliminada'}`);
+    if (antesG.verificationLevel !== nuevoG.verificationLevel) cambios.push(`🔒 Nivel de verificación: **${antesG.verificationLevel}** → **${nuevoG.verificationLevel}**`);
+    if (antesG.mfaLevel !== nuevoG.mfaLevel) cambios.push(`🔐 2FA: nivel **${antesG.mfaLevel}** → **${nuevoG.mfaLevel}**`);
+    const ejecutor = await obtenerEjecutor(nuevoG, AuditLogEvent.GuildUpdate, nuevoG.id);
+    const lineaEjecutor = ejecutor ? `\n🙋 Quién: <@${ejecutor.id}>` : '';
     if (!cambios.length) return;
 
     await logPara(bot, nuevoG, {
       embeds: [
         new EmbedBuilder()
-          .setColor(0x5865f2)
-          .setDescription('⚙️ **El servidor cambió sus ajustes**\n' + cambios.join('\n'))
+          .setColor(0xffa657)
+          .setDescription('⚙️ **El servidor cambió sus ajustes**\n' + cambios.join('\n') + lineaEjecutor)
           .setTimestamp(),
       ],
     });
@@ -347,22 +361,24 @@ function initLogger(client) {
 
   bot.on(Events.ChannelCreate, async (canal) => {
     if (!canal.guild) return;
+    const ejecutor = await obtenerEjecutor(canal.guild, AuditLogEvent.ChannelCreate, canal.id);
     await logPara(bot, canal.guild, {
       embeds: [
         new EmbedBuilder()
           .setColor(0x57f287)
-          .setDescription(`📂 Canal creado: <#${canal.id}> (${canal.type === ChannelType.GuildText ? 'texto' : canal.type === ChannelType.GuildVoice ? 'voz' : canal.type === ChannelType.GuildCategory ? 'categoría' : 'otro'})`),
+          .setDescription(`📂 Canal creado: <#${canal.id}> (${tipoCanal(canal)})${ejecutor ? `\n🙋 Quién: <@${ejecutor.id}>` : ''}`),
       ],
     });
   });
 
   bot.on(Events.ChannelDelete, async (canal) => {
     if (!canal.guild) return;
+    const ejecutor = await obtenerEjecutor(canal.guild, AuditLogEvent.ChannelDelete, canal.id);
     await logPara(bot, canal.guild, {
       embeds: [
         new EmbedBuilder()
           .setColor(0xed4245)
-          .setDescription(`🗑️ Canal borrado: **${canal.name}** (${canal.type === ChannelType.GuildText ? 'texto' : canal.type === ChannelType.GuildVoice ? 'voz' : canal.type === ChannelType.GuildCategory ? 'categoría' : 'otro'})`),
+          .setDescription(`🗑️ Canal borrado: **${canal.name}** (${tipoCanal(canal)})${ejecutor ? `\n🙋 Quién: <@${ejecutor.id}>` : ''}`),
       ],
     });
   });
@@ -372,33 +388,42 @@ function initLogger(client) {
     const cambios = [];
     if (antesC.name !== nuevoC.name) cambios.push(`🏷️ **${antesC.name}** → **${nuevoC.name}**`);
     if (antesC.topic !== nuevoC.topic) cambios.push(`📝 Tema: ${nuevoC.topic || 'eliminado'}`);
+    if (antesC.rateLimitPerUser !== nuevoC.rateLimitPerUser) cambios.push(`🐢 Slowmode: ${antesC.rateLimitPerUser || 0}s → ${nuevoC.rateLimitPerUser || 0}s`);
+    if (antesC.nsfw !== nuevoC.nsfw) cambios.push(`🔞 NSFW: ${antesC.nsfw ? 'sí' : 'no'} → ${nuevoC.nsfw ? 'sí' : 'no'}`);
+    if (nuevoC.isVoiceBased()) {
+      if (antesC.bitrate !== nuevoC.bitrate) cambios.push(`🎵 Bitrate: ${antesC.bitrate / 1000} kbps → ${nuevoC.bitrate / 1000} kbps`);
+      if (antesC.userLimit !== nuevoC.userLimit) cambios.push(`👥 Límite: ${antesC.userLimit || 'sin límite'} → ${nuevoC.userLimit || 'sin límite'}`);
+    }
     if (!cambios.length) return;
+    const ejecutor = await obtenerEjecutor(nuevoC.guild, AuditLogEvent.ChannelUpdate, nuevoC.id);
 
     await logPara(bot, nuevoC.guild, {
       embeds: [
         new EmbedBuilder()
           .setColor(0xffa657)
-          .setDescription(`⚙️ Canal <#${nuevoC.id}> actualizado\n${cambios.join('\n')}`),
+          .setDescription(`⚙️ Canal <#${nuevoC.id}> actualizado\n${cambios.join('\n')}${ejecutor ? `\n🙋 Quién: <@${ejecutor.id}>` : ''}`),
       ],
     });
   });
 
   bot.on(Events.RoleCreate, async (rol) => {
+    const ejecutor = await obtenerEjecutor(rol.guild, AuditLogEvent.RoleCreate, rol.id);
     await logPara(bot, rol.guild, {
       embeds: [
         new EmbedBuilder()
           .setColor(0x57f287)
-          .setDescription(`🎨 Rol creado: <@&${rol.id}> (\`${rol.name}\`)`),
+          .setDescription(`🎨 Rol creado: <@&${rol.id}> (\`${rol.name}\`)${ejecutor ? `\n🙋 Quién: <@${ejecutor.id}>` : ''}`),
       ],
     });
   });
 
   bot.on(Events.RoleDelete, async (rol) => {
+    const ejecutor = await obtenerEjecutor(rol.guild, AuditLogEvent.RoleDelete, rol.id);
     await logPara(bot, rol.guild, {
       embeds: [
         new EmbedBuilder()
           .setColor(0xed4245)
-          .setDescription(`🗑️ Rol borrado: **${rol.name}** (\`${rol.id}\`)`),
+          .setDescription(`🗑️ Rol borrado: **${rol.name}** (\`${rol.id}\`)${ejecutor ? `\n🙋 Quién: <@${ejecutor.id}>` : ''}`),
       ],
     });
   });
@@ -407,13 +432,154 @@ function initLogger(client) {
     const cambios = [];
     if (antesR.name !== nuevoR.name) cambios.push(`🏷️ **${antesR.name}** → **${nuevoR.name}**`);
     if (antesR.color !== nuevoR.color) cambios.push(`🎨 Color: \`#${antesR.color.toString(16)}\` → \`#${nuevoR.color.toString(16)}\``);
+    if (antesR.hoist !== nuevoR.hoist) cambios.push(`☑️ Mostrar aparte: ${antesR.hoist ? 'sí' : 'no'} → ${nuevoR.hoist ? 'sí' : 'no'}`);
+    if (antesR.mentionable !== nuevoR.mentionable) cambios.push(`📣 Mencionable: ${antesR.mentionable ? 'sí' : 'no'} → ${nuevoR.mentionable ? 'sí' : 'no'}`);
+    if (antesR.permissions.bitfield !== nuevoR.permissions.bitfield) cambios.push(`🔑 Permisos modificados`);
     if (!cambios.length) return;
+    const ejecutor = await obtenerEjecutor(nuevoR.guild, AuditLogEvent.RoleUpdate, nuevoR.id);
 
     await logPara(bot, nuevoR.guild, {
       embeds: [
         new EmbedBuilder()
           .setColor(0xffa657)
-          .setDescription(`⚙️ Rol <@&${nuevoR.id}> actualizado\n${cambios.join('\n')}`),
+          .setDescription(`⚙️ Rol <@&${nuevoR.id}> actualizado\n${cambios.join('\n')}${ejecutor ? `\n🙋 Quién: <@${ejecutor.id}>` : ''}`),
+      ],
+    });
+  });
+
+  bot.on(Events.EmojiCreate, async (emoji) => {
+    const ejecutor = await obtenerEjecutor(emoji.guild, AuditLogEvent.EmojiCreate, emoji.id);
+    await logPara(bot, emoji.guild, {
+      embeds: [
+        new EmbedBuilder()
+          .setColor(0x57f287)
+          .setDescription(`😀 Emoji creado: ${emoji} \`${emoji.name}\`${ejecutor ? `\n🙋 Quién: <@${ejecutor.id}>` : ''}`),
+      ],
+    });
+  });
+
+  bot.on(Events.EmojiDelete, async (emoji) => {
+    await logPara(bot, emoji.guild, {
+      embeds: [
+        new EmbedBuilder()
+          .setColor(0xed4245)
+          .setDescription(`🗑️ Emoji borrado: \`${emoji.name}\``),
+      ],
+    });
+  });
+
+  bot.on(Events.EmojiUpdate, async (antesE, nuevoE) => {
+    if (antesE.name === nuevoE.name) return;
+    await logPara(bot, nuevoE.guild, {
+      embeds: [
+        new EmbedBuilder()
+          .setColor(0xffa657)
+          .setDescription(`✏️ Emoji renombrado: \`${antesE.name}\` → \`${nuevoE.name}\``),
+      ],
+    });
+  });
+
+  bot.on(Events.StickerCreate, async (sticker) => {
+    await logPara(bot, sticker.guild, {
+      embeds: [
+        new EmbedBuilder()
+          .setColor(0x57f287)
+          .setDescription(`🖼️ Pegatina creada: \`${sticker.name}\``),
+      ],
+    });
+  });
+
+  bot.on(Events.StickerDelete, async (sticker) => {
+    await logPara(bot, sticker.guild, {
+      embeds: [
+        new EmbedBuilder()
+          .setColor(0xed4245)
+          .setDescription(`🗑️ Pegatina borrada: \`${sticker.name}\``),
+      ],
+    });
+  });
+
+  bot.on(Events.StickerUpdate, async (antesS, nuevoS) => {
+    if (antesS.name === nuevoS.name && antesS.description === nuevoS.description) return;
+    const cambios = [];
+    if (antesS.name !== nuevoS.name) cambios.push(`🏷️ \`${antesS.name}\` → \`${nuevoS.name}\``);
+    if (antesS.description !== nuevoS.description) cambios.push(`📝 Descripción: ${antesS.description || '—'} → ${nuevoS.description || '—'}`);
+    await logPara(bot, nuevoS.guild, {
+      embeds: [
+        new EmbedBuilder()
+          .setColor(0xffa657)
+          .setDescription(`✏️ Pegatina actualizada\n${cambios.join('\n')}`),
+      ],
+    });
+  });
+
+  bot.on(Events.WebhooksUpdate, async (canal) => {
+    const ejecutor = await obtenerEjecutor(canal.guild, AuditLogEvent.WebhookUpdate, canal.id);
+    await logPara(bot, canal.guild, {
+      embeds: [
+        new EmbedBuilder()
+          .setColor(0xffa657)
+          .setDescription(`🔗 Webhook(s) modificados en <#${canal.id}>${ejecutor ? `\n🙋 Quién: <@${ejecutor.id}>` : ''}`),
+      ],
+    });
+  });
+
+  bot.on(Events.ThreadCreate, async (hilo) => {
+    if (hilo.joinable && !hilo.joined) {
+      try { await hilo.join(); } catch {}
+    }
+    const ejecutor = await obtenerEjecutor(hilo.guild, AuditLogEvent.ThreadCreate, hilo.id);
+    await logPara(bot, hilo.guild, {
+      embeds: [
+        new EmbedBuilder()
+          .setColor(0x57f287)
+          .setDescription(`🧵 Hilo creado: **${hilo.name}** (<#${hilo.id}>)${ejecutor ? `\n🙋 Quién: <@${ejecutor.id}>` : ''}`),
+      ],
+    });
+  });
+
+  bot.on(Events.ThreadDelete, async (hilo) => {
+    await logPara(bot, hilo.guild, {
+      embeds: [
+        new EmbedBuilder()
+          .setColor(0xed4245)
+          .setDescription(`🧵 Hilo borrado: **${hilo.name}**`),
+      ],
+    });
+  });
+
+  bot.on(Events.ThreadUpdate, async (antesH, nuevoH) => {
+    const cambios = [];
+    if (antesH.name !== nuevoH.name) cambios.push(`🏷️ **${antesH.name}** → **${nuevoH.name}**`);
+    if (antesH.archived !== nuevoH.archived) cambios.push(`📦 Archivado: ${nuevoH.archived ? 'sí' : 'no'}`);
+    if (antesH.locked !== nuevoH.locked) cambios.push(`🔒 Bloqueado: ${nuevoH.locked ? 'sí' : 'no'}`);
+    if (antesH.autoArchiveDuration !== nuevoH.autoArchiveDuration) cambios.push(`⏱️ Autoarchivado: ${nuevoH.autoArchiveDuration} min`);
+    if (!cambios.length) return;
+    await logPara(bot, nuevoH.guild, {
+      embeds: [
+        new EmbedBuilder()
+          .setColor(0xffa657)
+          .setDescription(`⚙️ Hilo <#${nuevoH.id}> actualizado\n${cambios.join('\n')}`),
+      ],
+    });
+  });
+
+  bot.on(Events.GuildScheduledEventCreate, async (evento) => {
+    await logPara(bot, evento.guild, {
+      embeds: [
+        new EmbedBuilder()
+          .setColor(0x57f287)
+          .setDescription(`📅 Evento programado creado: **${evento.name}** <t:${Math.floor(evento.scheduledStartTimestamp / 1000)}:F>`),
+      ],
+    });
+  });
+
+  bot.on(Events.GuildScheduledEventDelete, async (evento) => {
+    await logPara(bot, evento.guild, {
+      embeds: [
+        new EmbedBuilder()
+          .setColor(0xed4245)
+          .setDescription(`🗑️ Evento programado borrado: **${evento.name}**`),
       ],
     });
   });
