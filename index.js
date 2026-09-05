@@ -163,6 +163,7 @@ function construirSetup() {
 }
 
 const TITULO_LISTA_COMANDOS = '📜 Comandos del bot';
+const MARCA_LISTA_COMANDOS = 'ComandosStaff v2';
 
 function construirListaComandos() {
   const embed = new EmbedBuilder()
@@ -170,19 +171,40 @@ function construirListaComandos() {
     .setDescription('Comandos disponibles del bot WallStreet.')
     .setColor(0x5865f2)
     .addFields(
-      { name: '🔨 Moderación', value: '`/ban` · `/unban` · `/kick` · `/timeout` · `/clear`', inline: false },
+      {
+        name: '🔨 Moderación',
+        value: [
+          '**/ban** — Banea a un usuario (opcional: días de mensajes a borrar y motivo).',
+          '**/unban** — Desbanea a un usuario introduciendo su ID.',
+          '**/kick** — Expulsa a un miembro del servidor (con motivo).',
+          '**/timeout** — Silencia a un usuario temporalmente (minutos, máx. 28 días).',
+          '**/clear** — Borra mensajes recientes del canal (1-100, solo en canales permitidos).',
+        ].join('\n'),
+        inline: false,
+      },
       {
         name: '🛡️ Verificación',
-        value: '`/setup` publica el botón Verificar · `/verificar` inicia la verificación',
+        value: [
+          '**/setup** — Publica el mensaje con el botón Verificar.',
+          '**/verificar** — Inicia el flujo de verificación (nombre → rango → equipo). En la práctica la gente usa el botón, no el comando.',
+        ].join('\n'),
         inline: false,
       },
       {
         name: '🧰 Utilidad',
-        value: '`/anuncio` · `/roles` · `/historial` · `/avatar` · `/userinfo` · `/serverinfo` · `/encuesta`',
+        value: [
+          '**/anuncio** — El personal publica un mensaje en el canal y lo envía por privado a todo un equipo (WSB/WSD/WSO/WSA).',
+          '**/roles** — Lista de roles del servidor (paginada).',
+          '**/historial** — Historial de actividad que el bot guarda de un usuario (filtrable por período).',
+          '**/avatar** — Avatar de un usuario en grande.',
+          '**/userinfo** — Info de un usuario: ID, si es bot, cuándo se creó, cuándo entró y sus roles.',
+          '**/serverinfo** — Info del servidor: dueño, miembros, canales, roles, emojis y fecha de creación.',
+          '**/encuesta** — Crea una encuesta con reacciones (ej. `Sí | No | Quizá`).',
+        ].join('\n'),
         inline: false,
       }
     )
-    .setFooter({ text: 'ComandosStaff' });
+    .setFooter({ text: MARCA_LISTA_COMANDOS });
 
   return { embeds: [embed] };
 }
@@ -197,7 +219,9 @@ async function publicarListaComandosEn(guild) {
   try {
     const mensajes = await canal.messages.fetch({ limit: 20 });
     const yaExiste = mensajes.some(
-      (m) => m.author.id === client.user.id && m.embeds.some((e) => e.title === TITULO_LISTA_COMANDOS)
+      (m) =>
+        m.author.id === client.user.id &&
+        m.embeds.some((e) => e.footer?.text === MARCA_LISTA_COMANDOS)
     );
     if (yaExiste) return;
   } catch (error) {
