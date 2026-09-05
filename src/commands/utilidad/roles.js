@@ -24,8 +24,8 @@ module.exports = {
   async execute(interaction) {
     const { guild } = interaction;
     const lista = [...guild.roles.cache.values()]
-      .sort((a, b) => b.position - a.position)
       .filter((r) => r.name !== '@everyone')
+      .sort((a, b) => b.position - a.position || (BigInt(a.id) > BigInt(b.id) ? -1 : 1))
       .map((r) => `${r} \`${r.id}\``)
       .join('\n') || 'No hay roles.';
 
