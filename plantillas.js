@@ -1,21 +1,23 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { EmbedBuilder } = require('discord.js');
 
 const ARCHIVO_MENSAJES = path.join(__dirname, 'plantilla_mensajes.json');
 
-const CONFIGURACION_POR_DEFECTO = {
+const {
+  categorias: CATEGORIA_POR_DEFECTO_ORDEN,
+} = {
   categorias: ['Master', 'Resp', 'ADM', 'Auxiliar', 'Lider', 'Sub', 'Miembro', 'Miembro Test'],
-  etiquetas: {
-    Master: 'Master.',
-    Resp: 'Resp.',
-    ADM: 'ADM.',
-    Auxiliar: 'Auxiliar.',
-    Lider: 'Lider.',
-    Sub: 'Sub.',
-    Miembro: 'Miembro.',
-    'Miembro Test': 'Miembro Test.',
-  },
+};
+
+const ETIQUETAS_ABREV = {
+  Master: 'Master',
+  Resp: 'Resp.',
+  ADM: 'ADM.',
+  Auxiliar: 'Aux.',
+  Lider: 'Lid.',
+  Sub: 'Sub.',
+  Miembro: 'Miembro.',
+  'Miembro Test': 'Miembro Test.',
 };
 
 let mensajes = {};
@@ -34,9 +36,8 @@ function configDe(client, guildId) {
 }
 
 function categoriasDe(config) {
-  const order = config.plantillaRangos?.orden || CONFIGURACION_POR_DEFECTO.categorias;
-  const etiquetas = { ...CONFIGURACION_POR_DEFECTO.etiquetas, ...(config.plantillaRangos?.etiquetas || {}) };
-  return { order, etiquetas };
+  const order = config.plantillaRangos?.orden || CATEGORIA_POR_DEFECTO_ORDEN;
+  return { order };
 }
 
 function esRangoValidoParaEquipo(config, rankRoleId, teamRoleId, equipos) {
@@ -50,7 +51,7 @@ function esRangoValidoParaEquipo(config, rankRoleId, teamRoleId, equipos) {
 }
 
 function calcularPlantilla(guild, equipoLabel, equipoId, config) {
-  const { order, etiquetas } = categoriasDe(config);
+  const { order } = categoriasDe(config);
   const mapping = config.plantillaRangos?.roles || {};
 
   const porCategoria = new Map(order.map((c) => [c, { count: 0, usuarios: [] }]));
@@ -80,28 +81,33 @@ function calcularPlantilla(guild, equipoLabel, equipoId, config) {
     }
   }
 
-  return { order, etiquetas, porCategoria, total };
+  return { order, porCategoria, total };
 }
 
-function construirEmbed(guild, equipoLabel, equipoId, config, datos) {
-  const { order, etiquetas, porCategoria, total } = datos;
-  const embed = new EmbedBuilder()
-    .setTitle('📌 PLANTILLA EQUIPOS')
-    .setColor(0x5865f2)
-    .addFields({ name: '| @Mencion del Equipo Correspondiente', value: `<@&${equipoId}>`, inline: false });
+function construirContenido(guild, equipoLabel, equipoId, config, datos) {
+  const { order, porCategoria, total } = datos;
+  const familia = equipoLabel.includes('ORGs') ? 'ORGs' : 'WallStreet';
+  const lineas = [
+    '📌**  PLANTILLA EQUIPO**',
+    '',
+    `| ** <@&${equipoId}>  **`,
+    '',
+  ];
 
   for (const categoria of order) {
     const dato = porCategoria.get(categoria);
-    const usuarios = dato.usuarios.length ? dato.usuarios.join(' ') : 'N/A';
-    embed.addFields({
-      name: `${etiquetas[categoria] || categoria}. del Equipo Correspondiente`,
-      value: `= **${dato.count}**\n${usuarios}`,
-      inline: false,
-    });
+    const etiqueta = ETIQUETAS_ABREV[categoria] || categoria;
+    lineas.push(`- **${etiqueta} ${familia} = ${dato.count}**`, '');
+    if (dato.usuarios.length) {
+      for (const u of dato.usuarios) lineas.push(`> * ** ${u} **`);
+    } else {
+      lineas.push('> * N/A');
+    }
+    lineas.push('');
   }
 
-  embed.addFields({ name: '📊 TOTAL', value: `= **${total}**`, inline: false });
-  return embed;
+  lineas.push(`**TOTAL: ${total}**`);
+  return lineas.join('\n');
 }
 
 async function actualizarPlantillas(guild) {
@@ -116,7 +122,7 @@ async function actualizarPlantillas(guild) {
   for (const [equipoLabel, equipoId] of Object.entries(config.equipos || {})) {
     if (!equipoId) continue;
     const datos = calcularPlantilla(guild, equipoLabel, equipoId, config);
-    const embed = construirEmbed(guild, equipoLabel, equipoId, config, datos);
+    const contenido = construirContenido(guild, equipoLabel, equipoId, config, datos);
 
     const previo = mensajes[guild.id]?.[equipoId];
     let mensaje = null;
@@ -128,9 +134,9 @@ async function actualizarPlantillas(guild) {
 
     try {
       if (mensaje) {
-        mensaje.edit({ embeds: [embed] }).catch(() => {});
+        mensaje.edit({ content: contenido }).catch(() => {});
       } else {
-        const enviado = await canal.send({ embeds: [embed] });
+        const enviado = await canal.send({ content: contenido });
         if (!mensajes[guild.id]) mensajes[guild.id] = {};
         mensajes[guild.id][equipoId] = enviado.id;
         guardarMensajes();
