@@ -332,15 +332,17 @@ client.on(Events.GuildMemberAdd, async (miembro) => {
 
 const pendientesPorUsuario = new Map();
 
-function construirSelectRoles(config) {
-  const opciones = Object.entries(config.rangos || {})
+function construirSelectRoles(config, tipo) {
+  const rangos = tipo === 'ORGs' ? config.rangosOrgs : config.rangosWS;
+  const opciones = Object.entries(rangos || {})
     .filter(([, id]) => id)
     .map(([label, id]) => new StringSelectMenuOptionBuilder().setLabel(label).setValue(id));
 
   const select = new StringSelectMenuBuilder()
     .setCustomId('verificar_roles')
-    .setPlaceholder('¿Cuál es tu rango en WallStreet?')
+    .setPlaceholder(tipo === 'ORGs' ? '¿Cuál es tu rango en las ORGs?' : '¿Cuál es tu rango en WallStreet?')
     .setMinValues(1)
+    .setMaxValues(1)
     .addOptions(opciones);
 
   return new ActionRowBuilder().addComponents(select);
@@ -376,9 +378,47 @@ async function manejarVerificacion(interaction) {
   pendientesPorUsuario.set(`${interaction.guildId}:${interaction.user.id}`, { nombre });
 
   await interaction.reply({
-    content: '📋 Marca los roles que te corresponden:',
-    components: [construirSelectRoles(config)],
+    content: '📋 ¿De qué equipo eres?',
+    components: [construirSelectEquipos(config)],
     ephemeral: true,
+  });
+}
+
+async function manejarSeleccionEquipo(interaction) {
+  const config = configDe(interaction.guildId);
+  const canalVerificar = interaction.guild.channels.cache.get(config.canalVerificar);
+
+  if (!config.canalVerificar || interaction.channelId !== config.canalVerificar) {
+    return interaction.update({
+      content: `Solo puedes usar esto en ${canalVerificar ? canalVerificar.toString() : 'el canal de verificación de este servidor'}.`,
+      components: [],
+    });
+  }
+
+  const clave = `${interaction.guildId}:${interaction.user.id}`;
+  const pendiente = pendientesPorUsuario.get(clave);
+  if (!pendiente) {
+    return interaction.update({
+      content: 'Esta solicitud ya caducó. Vuelve a usar /verificar.',
+      components: [],
+    });
+  }
+
+  const equipoId = interaction.values[0];
+  if (!equipoId) {
+    return interaction.update({
+      content: 'Selecciona tu equipo.',
+      components: [construirSelectEquipos(config)],
+    });
+  }
+
+  const esOrgs = equipoId === config.equipos?.ORGs;
+  pendiente.tipo = esOrgs ? 'ORGs' : 'WS';
+  pendiente.equipo = [equipoId];
+
+  return interaction.update({
+    content: esOrgs ? '📋 ¿Cuál es tu rango en las ORGs?' : '📋 ¿Cuál es tu rango en WallStreet?',
+    components: [construirSelectRoles(config, pendiente.tipo)],
   });
 }
 
@@ -393,38 +433,6 @@ async function manejarSeleccionRoles(interaction) {
     });
   }
 
-  const pendiente = pendientesPorUsuario.get(`${interaction.guildId}:${interaction.user.id}`);
-  if (!pendiente) {
-    return interaction.update({
-      content: 'Esta solicitud ya caducó. Vuelve a usar /verificar.',
-      components: [],
-    });
-  }
-
-  const rolesMarcados = interaction.values || [];
-  if (!rolesMarcados.length) {
-    return interaction.update({
-      content: 'Marca al menos un rol.',
-      components: [construirSelectRoles(config)],
-    });
-  }
-
-  const clave = `${interaction.guildId}:${interaction.user.id}`;
-  pendiente.rango = rolesMarcados;
-
-  if (config.equipos && Object.keys(config.equipos).length) {
-    return interaction.update({
-      content: '🏟️ ¿En qué equipo de WallStreet estás?',
-      components: [construirSelectEquipos(config)],
-    });
-  }
-
-  await enviarSolicitud(interaction, config, clave, pendiente, rolesMarcados);
-}
-
-async function manejarSeleccionEquipo(interaction) {
-  const config = configDe(interaction.guildId);
-
   const clave = `${interaction.guildId}:${interaction.user.id}`;
   const pendiente = pendientesPorUsuario.get(clave);
   if (!pendiente) {
@@ -434,15 +442,16 @@ async function manejarSeleccionEquipo(interaction) {
     });
   }
 
-  const equiposMarcados = interaction.values || [];
-  if (!equiposMarcados.length) {
+  const rolesMarcados = interaction.values || [];
+  if (!rolesMarcados.length || !pendiente.equipo?.length) {
     return interaction.update({
-      content: 'Selecciona tu equipo.',
-      components: [construirSelectEquipos(config)],
+      content: 'Selecciona tu rango.',
+      components: [construirSelectRoles(config, pendiente.tipo)],
     });
   }
 
-  const rolesFinales = [...(pendiente.rango || []), ...equiposMarcados];
+  pendiente.rango = rolesMarcados;
+  const rolesFinales = [...rolesMarcados, ...pendiente.equipo];
   await enviarSolicitud(interaction, config, clave, pendiente, rolesFinales);
 }
 

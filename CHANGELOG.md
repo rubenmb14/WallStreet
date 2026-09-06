@@ -1,5 +1,9 @@
 # CHANGELOG — WallStreet Bot
 
+## v6 — Verificación con ORGs
+- Al verificarse ahora se elige el equipo antes que el rango: WSB, WSD, WSO, WSA u ORGs.
+- Si el equipo es WallStreet se elige entre sus rangos; si es ORGs, entre los rangos de ORGs.
+
 ## v5 — Comandos y cambios por privado
 - Mensaje con la lista de comandos publicado automáticamente en el canal de comandos del staff.
 - Comandos de nuevo ocultos para usuarios normales (solo los ve el personal autorizado).
