@@ -1,8 +1,11 @@
 # CHANGELOG — WallStreet Bot
 
-## v10 — Registro de reclutados y 2º examinador
+## v11 — Sin ventana al aceptar
+- Quitada la ventana del 2º examinador: al pulsar Aceptar se acepta directamente (como antes).
+- Se mantiene el mensaje de reclutado con un solo examinador (quien pulsó Aceptar).
+
+## v10 — Registro de reclutados
 - Al aceptar una solicitud, el bot envía al canal de reclutados un mensaje con: Nombre, Equipo, Rango y Examinador.
-- Al pulsar Aceptar se abre una ventana donde se puede poner un segundo examinador (opcional) y quedan registrados los dos.
 
 ## v9 — Plantillas de equipos
 - Publica una plantilla por equipo (WSB, WSD, WSO, WSA, ORGs) en el canal de plantillas con la cantidad de miembros por rango y los usuarios mencionados.

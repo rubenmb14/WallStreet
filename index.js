@@ -318,9 +318,6 @@ client.on(Events.GuildMemberUpdate, (miembroAnterior, miembroNuevo) => {
 });
 
 const pendientesPorUsuario = new Map();
-const aceptandoPorUsuario = new Map();
-const MODAL_ACEPTAR = 'verif_aceptar_modal';
-const MODAL_SEGUNDO_EXAMINADOR = 'segundo_examinador';
 
 function construirSelectRoles(config, tipo) {
   const rangos = tipo === 'ORGs' ? config.rangosOrgs : config.rangosWS;
@@ -522,174 +519,95 @@ async function manejarRevision(interaction) {
 
   const esAceptar = interaction.customId === 'verif_aceptar';
 
-  if (!esAceptar) {
-    delete verificacionesPendientes[interaction.message.id];
-    guardarRevisiones();
+  delete verificacionesPendientes[interaction.message.id];
+  guardarRevisiones();
 
-    const embedOriginal = interaction.message.embeds[0];
-    const embedFinal = EmbedBuilder.from(embedOriginal)
-      .setColor(0xed4245)
-      .addFields({
-        name: '⚖️ Decisión',
-        value: `❌ Denegada por <@${interaction.user.id}>`,
-        inline: false,
-      });
-    await interaction.message.edit({ embeds: [embedFinal], components: [] });
+  const embedOriginal = interaction.message.embeds[0];
+  const embedFinal = EmbedBuilder.from(embedOriginal)
+    .setColor(esAceptar ? 0x57f287 : 0xed4245)
+    .addFields({
+      name: '⚖️ Decisión',
+      value: esAceptar ? `✅ Aceptada por <@${interaction.user.id}>` : `❌ Denegada por <@${interaction.user.id}>`,
+      inline: false,
+    });
+  await interaction.message.edit({ embeds: [embedFinal], components: [] });
 
-    const miembro = await interaction.guild.members.fetch(registro.userId).catch(() => null);
+  const miembro = await interaction.guild.members.fetch(registro.userId).catch(() => null);
 
-    logger.registrarEvento(
-      interaction.guildId,
-      registro.userId,
-      'verificacion_denegada',
-      `Verificación denegada por <@${interaction.user.id}>`
-    );
+  logger.registrarEvento(
+    interaction.guildId,
+    registro.userId,
+    esAceptar ? 'verificacion' : 'verificacion_denegada',
+    esAceptar
+      ? `Verificado por <@${interaction.user.id}> (roles: ${registro.roles.length})`
+      : `Verificación denegada por <@${interaction.user.id}>`
+  );
 
+  if (esAceptar) {
+    const avisos = [];
+    const botMiembro = interaction.guild.members.me;
+    const tieneGestionarApodos = botMiembro?.permissions.has(PermissionFlagsBits.ManageNicknames);
+
+    if (!tieneGestionarApodos) {
+      avisos.push('El bot necesita el permiso **Gestionar apodos** (Manage Nicknames) para cambiar el nombre.');
+    }
+
+    if (miembro) {
+      const posicionBot = botMiembro?.roles.highest.position ?? 0;
+      const posicionMiembro = miembro.roles.highest.position ?? 0;
+      if (posicionMiembro >= posicionBot) {
+        avisos.push('El rol del bot debe estar **por encima** del rol más alto de este usuario para cambiarle el apodo.');
+      }
+      try {
+        const apodoFinal = registro.apodo ? `${registro.apodo} | ${registro.nombre}` : registro.nombre;
+        await miembro.setNickname(apodoFinal);
+      } catch {
+        avisos.push('No pude cambiar el apodo del usuario.');
+      }
+      const rolesExistentes = registro.roles.filter((id) => interaction.guild.roles.cache.has(id));
+      const rolesAAsignar = [...rolesExistentes];
+      if (config.rolVerificado && interaction.guild.roles.cache.has(config.rolVerificado)) {
+        rolesAAsignar.push(config.rolVerificado);
+      }
+      if (rolesAAsignar.length) {
+        try {
+          await miembro.roles.add(rolesAAsignar);
+        } catch {
+          avisos.push('No pude asignar los roles.');
+        }
+      }
+      if (config.rolSinVerificar && miembro.roles.cache.has(config.rolSinVerificar)) {
+        try {
+          await miembro.roles.remove(config.rolSinVerificar);
+        } catch {
+          avisos.push('No pude quitar el rol de sin verificar.');
+        }
+      }
+      try {
+        await plantillas.actualizarPlantillas(interaction.guild);
+      } catch {}
+      miembro
+        .send(`✅ ¡Tu verificación fue **aceptada** en ${interaction.guild.name}! Tu rol ha sido asignado. Aceptado por <@${interaction.user.id}>${avisos.length ? `\n⚠️ ${avisos.join('\n⚠️ ')}` : ''}`)
+        .catch(() => {});
+    }
+
+    await enviarMensajeReclutamiento(interaction.guild, config, registro, interaction.user.id);
+
+    await interaction.reply({
+      content: `✅ Solicitud aceptada.${avisos.length ? `\n⚠️ ${avisos.join('\n⚠️ ')}` : '\nEl miembro ya tiene su rol.'}`,
+      ephemeral: true,
+    });
+  } else {
     if (miembro) {
       miembro
         .send(`❌ Tu verificación fue **denegada** en ${interaction.guild.name}. Denegado por <@${interaction.user.id}>`)
         .catch(() => {});
     }
-    return interaction.reply({ content: '❌ Solicitud denegada.', ephemeral: true });
+    await interaction.reply({ content: '❌ Solicitud denegada.', ephemeral: true });
   }
-
-  aceptandoPorUsuario.set(interaction.user.id, interaction.message.id);
-
-  const modal = new ModalBuilder()
-    .setCustomId(MODAL_ACEPTAR)
-    .setTitle('Aceptar solicitud');
-
-  const segundoExaminador = new TextInputBuilder()
-    .setCustomId(MODAL_SEGUNDO_EXAMINADOR)
-    .setLabel('Segundo examinador (opcional)')
-    .setPlaceholder('Menciona @Usuario o pega su ID')
-    .setStyle(TextInputStyle.Short)
-    .setRequired(false)
-    .setMaxLength(100);
-
-  modal.addComponents(new ActionRowBuilder().addComponents(segundoExaminador));
-
-  return interaction.showModal(modal);
 }
 
-async function manejarAceptarModal(interaction) {
-  const messageId = aceptandoPorUsuario.get(interaction.user.id);
-  const registro = messageId ? verificacionesPendientes[messageId] : null;
-  if (!registro) {
-    aceptandoPorUsuario.delete(interaction.user.id);
-    return interaction.reply({ content: 'Esta solicitud ya fue resuelta.', ephemeral: true });
-  }
-  aceptandoPorUsuario.delete(interaction.user.id);
-
-  const textoSegundo = interaction.fields.getTextInputValue(MODAL_SEGUNDO_EXAMINADOR).trim();
-  let examinador2 = null;
-  if (textoSegundo) {
-    examinador2 = await resolverExaminador(interaction.guild, textoSegundo);
-    if (!examinador2) {
-      return interaction.reply({ content: `No encontré a **${textoSegundo}** como segundo examinador. Revisa la mención o el ID y vuelve a pulsar Aceptar.`, ephemeral: true });
-    }
-  }
-
-  await finalizarAceptacion(interaction, registro, interaction.user.id, examinador2);
-}
-
-async function resolverExaminador(guild, texto) {
-  const m = texto.match(/<@!?(\d+)>/);
-  let id = m ? m[1] : null;
-  if (!id && /^\d{17,19}$/.test(texto)) id = texto;
-  if (id) {
-    const miembro = await guild.members.fetch(id).catch(() => null);
-    if (miembro) return miembro.id;
-    return null;
-  }
-  const porNombre = await guild.members.fetch({ query: texto, limit: 1 }).catch(() => null);
-  return porNombre?.size ? porNombre.first().id : null;
-}
-
-async function finalizarAceptacion(interaction, registro, examinador1, examinador2) {
-  const guild = interaction.guild;
-  const config = configDe(registro.guildId);
-
-  delete verificacionesPendientes[interaction.message.id];
-  guardarRevisiones();
-
-  const embedOriginal = interaction.message?.embeds?.[0];
-  if (embedOriginal) {
-    const embedFinal = EmbedBuilder.from(embedOriginal)
-      .setColor(0x57f287)
-      .addFields({
-        name: '⚖️ Decisión',
-        value: `<@${examinador1}> aceptó la solicitud${examinador2 ? ` con <@${examinador2}>` : ''}`,
-        inline: false,
-      });
-    await interaction.message.edit({ embeds: [embedFinal], components: [] }).catch(() => {});
-  }
-
-  const miembro = await guild.members.fetch(registro.userId).catch(() => null);
-
-  logger.registrarEvento(
-    interaction.guildId,
-    registro.userId,
-    'verificacion',
-    `Verificado por <@${examinador1}>${examinador2 ? ` y <@${examinador2}>` : ''} (roles: ${registro.roles.length})`
-  );
-
-  const avisos = [];
-  const botMiembro = guild.members.me;
-  const tieneGestionarApodos = botMiembro?.permissions.has(PermissionFlagsBits.ManageNicknames);
-
-  if (!tieneGestionarApodos) {
-    avisos.push('El bot necesita el permiso **Gestionar apodos** (Manage Nicknames) para cambiar el nombre.');
-  }
-
-  if (miembro) {
-    const posicionBot = botMiembro?.roles.highest.position ?? 0;
-    const posicionMiembro = miembro.roles.highest.position ?? 0;
-    if (posicionMiembro >= posicionBot) {
-      avisos.push('El rol del bot debe estar **por encima** del rol más alto de este usuario para cambiarle el apodo.');
-    }
-    try {
-      const apodoFinal = registro.apodo ? `${registro.apodo} | ${registro.nombre}` : registro.nombre;
-      await miembro.setNickname(apodoFinal);
-    } catch {
-      avisos.push('No pude cambiar el apodo del usuario.');
-    }
-    const rolesExistentes = registro.roles.filter((id) => guild.roles.cache.has(id));
-    const rolesAAsignar = [...rolesExistentes];
-    if (config.rolVerificado && guild.roles.cache.has(config.rolVerificado)) {
-      rolesAAsignar.push(config.rolVerificado);
-    }
-    if (rolesAAsignar.length) {
-      try {
-        await miembro.roles.add(rolesAAsignar);
-      } catch {
-        avisos.push('No pude asignar los roles.');
-      }
-    }
-    if (config.rolSinVerificar && miembro.roles.cache.has(config.rolSinVerificar)) {
-      try {
-        await miembro.roles.remove(config.rolSinVerificar);
-      } catch {
-        avisos.push('No pude quitar el rol de sin verificar.');
-      }
-    }
-    try {
-      await plantillas.actualizarPlantillas(guild);
-    } catch {}
-    miembro
-      .send(`✅ ¡Tu verificación fue **aceptada** en ${guild.name}! Tu rol ha sido asignado. Aceptado por <@${examinador1}>${examinador2 ? ` y <@${examinador2}>` : ''}${avisos.length ? `\n⚠️ ${avisos.join('\n⚠️ ')}` : ''}`)
-      .catch(() => {});
-  }
-
-  await enviarMensajeReclutamiento(guild, config, registro, examinador1, examinador2);
-
-  await interaction.reply({
-    content: `✅ Solicitud aceptada.${avisos.length ? `\n⚠️ ${avisos.join('\n⚠️ ')}` : '\nEl miembro ya tiene su rol.'}`,
-    ephemeral: true,
-  });
-}
-
-async function enviarMensajeReclutamiento(guild, config, registro, examinador1, examinador2) {
+async function enviarMensajeReclutamiento(guild, config, registro, examinador1) {
   const canalId = config.canalReclutamiento;
   if (!canalId) return;
   const canal = guild.channels.cache.get(canalId);
@@ -701,7 +619,7 @@ async function enviarMensajeReclutamiento(guild, config, registro, examinador1, 
     `Nombre: <@${registro.userId}>`,
     equipoId ? `Equipo: <@&${equipoId}>` : null,
     rangoId ? `Rango: <@&${rangoId}>` : null,
-    examinador2 ? `Examinadores: <@${examinador1}> y <@${examinador2}>` : `Examinador: <@${examinador1}>`,
+    `Examinador: <@${examinador1}>`,
   ].filter(Boolean);
 
   await canal.send({ content: lineas.join('\n') }).catch(() => {});
@@ -739,11 +657,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
   if (interaction.isModalSubmit() && interaction.customId === 'verificar_modal') {
     await manejarVerificacion(interaction);
-    return;
-  }
-
-  if (interaction.isModalSubmit() && interaction.customId === MODAL_ACEPTAR) {
-    await manejarAceptarModal(interaction);
     return;
   }
 
