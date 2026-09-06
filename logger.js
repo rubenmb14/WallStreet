@@ -9,7 +9,6 @@ const {
 
 const ARCHIVO_HISTORIAL = path.join(__dirname, 'historial.json');
 const invitacionesCache = new Map();
-const avisosEmitidos = new Set();
 
 function cargar() {
   try {
@@ -46,40 +45,10 @@ function canalLogsDe(bot, guild) {
   return canal && canal.isTextBased() ? canal : null;
 }
 
-function canalAlertasDe(bot, guild) {
-  const cfg = bot.configDe(guild.id);
-  if (!cfg.canalAlertas) return null;
-  const canal = guild.channels.cache.get(cfg.canalAlertas);
-  return canal && canal.isTextBased() ? canal : null;
-}
-
-async function alertaDe(bot, guild, descripcion, color = 0xed4245, autor = '⚠️ Alerta del bot') {
-  const canal = canalAlertasDe(bot, guild);
-  if (!canal) return;
-  await canal
-    .send({
-      embeds: [
-        new EmbedBuilder()
-          .setColor(color)
-          .setAuthor({ name: autor })
-          .setDescription(descripcion)
-          .setTimestamp(),
-      ],
-    })
-    .catch(() => {});
-}
-
 async function logPara(bot, guild, data) {
   if (!guild) return;
   const canal = canalLogsDe(bot, guild);
-  if (!canal) {
-    const clave = `logs:${guild.id}`;
-    if (!avisosEmitidos.has(clave)) {
-      avisosEmitidos.add(clave);
-      alertaDe(bot, guild, '⚠️ **No encuentro el canal de logs** (`canalLogs`).\nComprueba que el ID de `config.json` es correcto y que el bot ve ese canal.', 0xfee75c, '⚙️ Configuración');
-    }
-    return;
-  }
+  if (!canal) return;
   await canal.send(data).catch(() => {});
 }
 
@@ -694,18 +663,6 @@ function initLogger(client) {
       ],
     });
     registrarEvento(interaction.guild?.id, interaction.user.id, 'comando', `Usó /${interaction.commandName}`);
-  });
-
-  bot.on(Events.ShardResume, (id) => {
-    for (const guild of bot.guilds.cache.values()) {
-      alertaDe(bot, guild, `✅ **El shard ${id} se ha reconectado a Discord.**`, 0x57f287, '📡 Estado del bot');
-    }
-  });
-
-  bot.on(Events.ShardDisconnect, (evento, id) => {
-    for (const guild of bot.guilds.cache.values()) {
-      alertaDe(bot, guild, `⚠️ **El shard ${id} se ha desconectado.**${evento.code ? `\nCódigo: \`${evento.code}\`` : ''}`, 0xfee75c, '📡 Estado del bot');
-    }
   });
 }
 

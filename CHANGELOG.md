@@ -1,5 +1,8 @@
 # CHANGELOG — WallStreet Bot
 
+## v7 — Sin alertas
+- Eliminado el sistema de alertas (mensajes de inicio, errores y estado del bot en el canal de alertas).
+
 ## v6 — Verificación con ORGs
 - Al verificarse ahora se elige el equipo antes que el rango: WSB, WSD, WSO, WSA u ORGs.
 - Si el equipo es WallStreet se elige entre sus rangos; si es ORGs, entre los rangos de ORGs.
