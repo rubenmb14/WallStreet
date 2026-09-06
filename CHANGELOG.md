@@ -1,5 +1,10 @@
 # CHANGELOG — WallStreet Bot
 
+## v8 — Apodo automático al verificarse
+- Al aceptar la solicitud, el bot pone el apodo con el nombre del usuario y la etiqueta según rango y equipo: `Lid.WSB | Nombre`.
+- Rangos: AUX → `Aux.`, LIDER → `Lid.`, SUBLIDER → `Sub.`, MIEMBRO → solo el equipo (`WSB`, `ORGs`…), PRUEBA → equipo con `-T` (`WSB-T`).
+- Master, Resp. y ADM se quedan solo con el nombre.
+
 ## v7 — Sin alertas
 - Eliminado el sistema de alertas (mensajes de inicio, errores y estado del bot en el canal de alertas).
 

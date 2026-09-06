@@ -424,6 +424,16 @@ async function manejarSeleccionRoles(interaction) {
   await enviarSolicitud(interaction, config, clave, pendiente, rolesFinales);
 }
 
+function calcularApodo(config, roles) {
+  const abreviaturas = config.abreviaturasApodo || {};
+  const abRevRango = roles[0] ? abreviaturas.rangos?.[roles[0]] : undefined;
+  const abRevEquipo = roles[1] ? abreviaturas.equipos?.[roles[1]] : undefined;
+  if (abRevRango === undefined || abRevEquipo === undefined) return null;
+  if (abRevRango === '') return abRevEquipo;
+  if (abRevRango === '-T') return `${abRevEquipo}-T`;
+  return `${abRevRango}.${abRevEquipo}`;
+}
+
 async function enviarSolicitud(interaction, config, clave, pendiente, rolesMarcados) {
   const canalRevision = interaction.guild.channels.cache.get(config.canalRevision);
   if (!config.canalRevision || !canalRevision?.isTextBased()) {
@@ -432,6 +442,8 @@ async function enviarSolicitud(interaction, config, clave, pendiente, rolesMarca
       components: [],
     });
   }
+
+  const apodo = calcularApodo(config, rolesMarcados);
 
   const embed = new EmbedBuilder()
     .setTitle('📝 Solicitud de verificación')
@@ -443,6 +455,10 @@ async function enviarSolicitud(interaction, config, clave, pendiente, rolesMarca
       { name: '🎖️ Roles solicitados', value: rolesMarcados.map((id) => `<@&${id}>`).join(' '), inline: false },
       { name: '🕐 Enviado', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }
     );
+
+  if (apodo) {
+    embed.addFields({ name: '🏷️ Apodo al aceptar', value: `${apodo} | ${pendiente.nombre}`, inline: true });
+  }
 
   const filaBotones = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId('verif_aceptar').setLabel('Aceptar').setStyle(ButtonStyle.Success),
@@ -456,6 +472,7 @@ async function enviarSolicitud(interaction, config, clave, pendiente, rolesMarca
     canalRevision: canalRevision.id,
     userId: interaction.user.id,
     nombre: pendiente.nombre,
+    apodo,
     roles: rolesMarcados,
   };
   guardarRevisiones();
@@ -523,7 +540,8 @@ async function manejarRevision(interaction) {
         avisos.push('El rol del bot debe estar **por encima** del rol más alto de este usuario para cambiarle el apodo.');
       }
       try {
-        await miembro.setNickname(registro.nombre);
+        const apodoFinal = registro.apodo ? `${registro.apodo} | ${registro.nombre}` : registro.nombre;
+        await miembro.setNickname(apodoFinal);
       } catch {
         avisos.push('No pude cambiar el apodo del usuario.');
       }
