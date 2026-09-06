@@ -412,7 +412,8 @@ async function manejarSeleccionEquipo(interaction) {
     });
   }
 
-  const esOrgs = equipoId === config.equipos?.ORGs;
+  const equipoOrgs = Object.entries(config.equipos || {}).find(([label]) => label.includes('ORGs'))?.[1];
+  const esOrgs = equipoOrgs !== undefined && equipoId === equipoOrgs;
   pendiente.tipo = esOrgs ? 'ORGs' : 'WS';
   pendiente.equipo = [equipoId];
 
