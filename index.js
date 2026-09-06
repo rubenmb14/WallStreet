@@ -20,6 +20,7 @@ const {
   TextInputStyle,
 } = require('discord.js');
 const logger = require('./logger');
+const plantillas = require('./plantillas');
 
 const client = new Client({
   intents: [
@@ -269,6 +270,12 @@ client.once(Events.ClientReady, async (c) => {
   console.log('Setups publicados en los servidores configurados.');
 
   await notificarCambios(c);
+
+  for (const guild of c.guilds.cache.values()) {
+    await guild.members.fetch().catch(() => {});
+    await plantillas.actualizarPlantillas(guild);
+  }
+  console.log('Plantillas de equipos actualizadas.');
 });
 
 client.on(Events.GuildMemberAdd, async (miembro) => {
@@ -295,6 +302,18 @@ client.on(Events.GuildMemberAdd, async (miembro) => {
     miembro
       .send(mensajeBase.replace('{mention}', `<@${miembro.user.id}>`).replace('{server}', miembro.guild.name))
       .catch(() => {});
+  }
+});
+
+client.on(Events.GuildMemberRemove, (miembro) => {
+  plantillas.actualizarPlantillas(miembro.guild).catch(() => {});
+});
+
+client.on(Events.GuildMemberUpdate, (miembroAnterior, miembroNuevo) => {
+  const antes = miembroAnterior.roles.cache.keyArray().join(',');
+  const despues = miembroNuevo.roles.cache.keyArray().join(',');
+  if (antes !== despues) {
+    plantillas.actualizarPlantillas(miembroNuevo.guild).catch(() => {});
   }
 });
 
@@ -564,6 +583,9 @@ async function manejarRevision(interaction) {
           avisos.push('No pude quitar el rol de sin verificar.');
         }
       }
+      try {
+        await plantillas.actualizarPlantillas(interaction.guild);
+      } catch {}
       miembro
         .send(`✅ ¡Tu verificación fue **aceptada** en ${interaction.guild.name}! Tu rol ha sido asignado. Aceptado por <@${interaction.user.id}>${avisos.length ? `\n⚠️ ${avisos.join('\n⚠️ ')}` : ''}`)
         .catch(() => {});

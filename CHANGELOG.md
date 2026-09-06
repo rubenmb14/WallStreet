@@ -1,5 +1,10 @@
 # CHANGELOG — WallStreet Bot
 
+## v9 — Plantillas de equipos
+- Publica una plantilla por equipo (WSB, WSD, WSO, WSA, ORGs) en el canal de plantillas con la cantidad de miembros por rango y los usuarios mencionados.
+- Se actualiza sola al verificar a alguien, cuando cambia de roles o cuando alguien sale del server.
+- Si alguien tiene varios rangos se cuenta solo en el más alto (Master > Resp > ADM > Auxiliar > Lider > Sub > Miembro > Miembro Test).
+
 ## v8 — Apodo automático al verificarse
 - Al aceptar la solicitud, el bot pone el apodo con el nombre del usuario y la etiqueta según rango y equipo: `Lid.WSB | Nombre`.
 - Rangos: AUX → `Aux.`, LIDER → `Lid.`, SUBLIDER → `Sub.`, MIEMBRO → solo el equipo (`WSB`, `ORGs`…), PRUEBA → equipo con `-T` (`WSB-T`).
