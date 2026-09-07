@@ -4,6 +4,7 @@ const {
   ActionRowBuilder,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
+  MessageFlags,
 } = require('discord.js');
 const logger = require('../../../logger');
 
@@ -66,7 +67,7 @@ module.exports = {
     if (!eventos.length) {
       return interaction.reply({
         content: `No hay eventos registrados de <@${objetivo.id}>${limiteDias > 0 ? ` en los últimos ${limiteDias} días` : ''}.`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -128,7 +129,7 @@ module.exports = {
     colector.on('collect', async (i) => {
       if (i.customId !== 'historial_pagina') return;
       if (i.user.id !== interaction.user.id) {
-        return i.reply({ content: 'Este historial no es tuyo.', ephemeral: true });
+        return i.reply({ content: 'Este historial no es tuyo.', flags: MessageFlags.Ephemeral });
       }
       actual = Number(i.values[0]);
       const filaNueva = new ActionRowBuilder().addComponents(

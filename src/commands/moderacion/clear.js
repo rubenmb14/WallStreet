@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -17,10 +17,10 @@ module.exports = {
     const cantidad = interaction.options.getInteger('cantidad', true);
 
     if (!interaction.channel.bulkDeletable) {
-      return interaction.reply({ content: 'No tengo permiso para borrar mensajes en este canal.', ephemeral: true });
+      return interaction.reply({ content: 'No tengo permiso para borrar mensajes en este canal.', flags: MessageFlags.Ephemeral });
     }
 
     const borrados = await interaction.channel.bulkDelete(cantidad, true);
-    await interaction.reply({ content: `🧹 Se borraron **${borrados.size}** mensajes.`, ephemeral: true });
+    await interaction.reply({ content: `🧹 Se borraron **${borrados.size}** mensajes.`, flags: MessageFlags.Ephemeral });
   },
 };

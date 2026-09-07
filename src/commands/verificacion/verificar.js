@@ -4,6 +4,7 @@ const {
   TextInputBuilder,
   TextInputStyle,
   ActionRowBuilder,
+  MessageFlags,
 } = require('discord.js');
 
 module.exports = {
@@ -18,7 +19,7 @@ module.exports = {
       const canal = interaction.guild.channels.cache.get(config.canalVerificar);
       return interaction.reply({
         content: `Solo puedes usar /verificar en ${canal ? canal.toString() : 'el canal de verificación de este servidor'}.`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 

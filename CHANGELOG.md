@@ -1,5 +1,9 @@
 # CHANGELOG — WallStreet Bot
 
+## v12 — Arreglo del crash al verificar
+- Corregido el fallo que tiraba el bot al aceptar una verificación (método `keyArray` eliminado en discord.js v14). Ahora roles, apodo, plantillas y mensaje de reclutado se aplican sin crashear.
+- Reemplazadas las respuestas `ephemeral` por `flags: MessageFlags.Ephemeral` (fin de las advertencias en logs).
+
 ## v11 — Sin ventana al aceptar
 - Quitada la ventana del 2º examinador: al pulsar Aceptar se acepta directamente (como antes).
 - Se mantiene el mensaje de reclutado con un solo examinador (quien pulsó Aceptar).

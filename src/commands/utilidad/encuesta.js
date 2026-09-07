@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, MessageFlags } = require('discord.js');
 
 const NUMEROS = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
 
@@ -25,7 +25,7 @@ module.exports = {
 
     const opciones = opcionesTexto.split('|').map((x) => x.trim()).filter(Boolean);
     if (opciones.length < 2 || opciones.length > NUMEROS.length) {
-      return interaction.reply({ content: `Debes dar entre 2 y ${NUMEROS.length} opciones separadas por |`, ephemeral: true });
+      return interaction.reply({ content: `Debes dar entre 2 y ${NUMEROS.length} opciones separadas por |`, flags: MessageFlags.Ephemeral });
     }
 
     const cuerpo = opciones.map((op, i) => `${NUMEROS[i]} ${op}`).join('\n\n');

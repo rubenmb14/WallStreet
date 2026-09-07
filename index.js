@@ -18,6 +18,7 @@ const {
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
+  MessageFlags,
 } = require('discord.js');
 const logger = require('./logger');
 const plantillas = require('./plantillas');
@@ -310,8 +311,8 @@ client.on(Events.GuildMemberRemove, (miembro) => {
 });
 
 client.on(Events.GuildMemberUpdate, (miembroAnterior, miembroNuevo) => {
-  const antes = miembroAnterior.roles.cache.keyArray().join(',');
-  const despues = miembroNuevo.roles.cache.keyArray().join(',');
+  const antes = miembroAnterior.roles.cache.map((rol) => rol.id).join(',');
+  const despues = miembroNuevo.roles.cache.map((rol) => rol.id).join(',');
   if (antes !== despues) {
     plantillas.actualizarPlantillas(miembroNuevo.guild).catch(() => {});
   }
@@ -356,7 +357,7 @@ async function manejarVerificacion(interaction) {
   if (!config.canalVerificar || interaction.channelId !== config.canalVerificar) {
     return interaction.reply({
       content: `Solo puedes usar /verificar en ${canalVerificar ? canalVerificar.toString() : 'el canal de verificación de este servidor'}.`,
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -367,7 +368,7 @@ async function manejarVerificacion(interaction) {
   await interaction.reply({
     content: '📋 ¿De qué equipo eres?',
     components: [construirSelectEquipos(config)],
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
 }
 
@@ -508,13 +509,13 @@ async function manejarRevision(interaction) {
   const registro = verificacionesPendientes[interaction.message.id];
 
   if (!registro) {
-    return interaction.reply({ content: 'Esta solicitud ya fue resuelta.', ephemeral: true });
+    return interaction.reply({ content: 'Esta solicitud ya fue resuelta.', flags: MessageFlags.Ephemeral });
   }
 
   const config = configDe(registro.guildId);
 
   if (!esPersonal(interaction.member, config) && !interaction.member.permissions.has(PermissionFlagsBits.ManageMessages)) {
-    return interaction.reply({ content: 'No tienes permiso para decidir sobre esta solicitud.', ephemeral: true });
+    return interaction.reply({ content: 'No tienes permiso para decidir sobre esta solicitud.', flags: MessageFlags.Ephemeral });
   }
 
   const esAceptar = interaction.customId === 'verif_aceptar';
@@ -530,7 +531,7 @@ async function manejarRevision(interaction) {
       value: esAceptar ? `✅ Aceptada por <@${interaction.user.id}>` : `❌ Denegada por <@${interaction.user.id}>`,
       inline: false,
     });
-  await interaction.message.edit({ embeds: [embedFinal], components: [] });
+  await interaction.message.edit({ embeds: [embedFinal], components: [] }).catch(() => {});
 
   const miembro = await interaction.guild.members.fetch(registro.userId).catch(() => null);
 
@@ -595,7 +596,7 @@ async function manejarRevision(interaction) {
 
     await interaction.reply({
       content: `✅ Solicitud aceptada.${avisos.length ? `\n⚠️ ${avisos.join('\n⚠️ ')}` : '\nEl miembro ya tiene su rol.'}`,
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   } else {
     if (miembro) {
@@ -603,7 +604,7 @@ async function manejarRevision(interaction) {
         .send(`❌ Tu verificación fue **denegada** en ${interaction.guild.name}. Denegado por <@${interaction.user.id}>`)
         .catch(() => {});
     }
-    await interaction.reply({ content: '❌ Solicitud denegada.', ephemeral: true });
+    await interaction.reply({ content: '❌ Solicitud denegada.', flags: MessageFlags.Ephemeral });
   }
 }
 
@@ -634,18 +635,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
     const config = configDe(interaction.guildId);
 
     if (interaction.channelId === config.canalVerificar && interaction.commandName !== 'verificar' && interaction.commandName !== 'setup') {
-      return interaction.reply({ content: 'En este canal solo puedes usar /verificar y /setup.', ephemeral: true });
+      return interaction.reply({ content: 'En este canal solo puedes usar /verificar y /setup.', flags: MessageFlags.Ephemeral });
     }
 
     if (interaction.commandName !== 'verificar' && !esPersonal(interaction.member, config)) {
-      return interaction.reply({ content: 'No tienes permiso para usar este comando.', ephemeral: true });
+      return interaction.reply({ content: 'No tienes permiso para usar este comando.', flags: MessageFlags.Ephemeral });
     }
 
     try {
       await comando.execute(interaction);
     } catch (error) {
       console.error(error);
-      const respuesta = { content: 'Hubo un error al ejecutar este comando.', ephemeral: true };
+      const respuesta = { content: 'Hubo un error al ejecutar este comando.', flags: MessageFlags.Ephemeral };
       if (interaction.replied || interaction.deferred) {
         await interaction.followUp(respuesta);
       } else {
@@ -682,7 +683,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const canal = interaction.guild.channels.cache.get(config.canalVerificar);
       return interaction.reply({
         content: `Solo puedes verificarte en ${canal ? canal.toString() : 'el canal de verificación de este servidor'}. Usa /verificar ahí.`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 

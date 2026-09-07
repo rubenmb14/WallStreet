@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 const { PermissionFlagsBits } = require('discord.js');
 
 const EQUIPOS = [
@@ -27,7 +27,7 @@ module.exports = {
 
   async execute(interaction) {
     if (!interaction.inGuild()) {
-      return interaction.reply({ content: '❌ Solo se puede usar dentro del servidor.', ephemeral: true });
+      return interaction.reply({ content: '❌ Solo se puede usar dentro del servidor.', flags: MessageFlags.Ephemeral });
     }
 
     const config = interaction.client.configDe(interaction.guild.id);
@@ -37,7 +37,7 @@ module.exports = {
     if (!esAdmin && !esStaff) {
       return interaction.reply({
         content: '❌ No tienes permiso para usar este comando.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -45,7 +45,7 @@ module.exports = {
     const mensaje = interaction.options.getString('mensaje');
     const equipo = EQUIPOS.find((e) => e.value === equipoId);
 
-    await interaction.deferReply({ ephemeral: false });
+    await interaction.deferReply();
 
     const embed = new EmbedBuilder()
       .setColor(0x5865f2)

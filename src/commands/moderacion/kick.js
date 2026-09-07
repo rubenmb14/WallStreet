@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -17,10 +17,10 @@ module.exports = {
     const miembro = await interaction.guild.members.fetch(usuario.id).catch(() => null);
 
     if (!miembro) {
-      return interaction.reply({ content: 'No encontré a ese usuario en el servidor.', ephemeral: true });
+      return interaction.reply({ content: 'No encontré a ese usuario en el servidor.', flags: MessageFlags.Ephemeral });
     }
     if (!miembro.kickable) {
-      return interaction.reply({ content: 'No puedo expulsarlo: tiene un rol superior al mío o es el dueño.', ephemeral: true });
+      return interaction.reply({ content: 'No puedo expulsarlo: tiene un rol superior al mío o es el dueño.', flags: MessageFlags.Ephemeral });
     }
 
     await miembro.kick(razon);

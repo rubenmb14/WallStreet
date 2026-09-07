@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -16,7 +16,7 @@ module.exports = {
     } catch {
       await interaction.reply({
         content: 'No pude desbanear. Verifica que el ID sea correcto y que el usuario esté baneado.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
   },

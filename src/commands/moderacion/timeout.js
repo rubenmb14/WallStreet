@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -26,10 +26,10 @@ module.exports = {
     const miembro = await interaction.guild.members.fetch(usuario.id).catch(() => null);
 
     if (!miembro) {
-      return interaction.reply({ content: 'No encontré a ese usuario en el servidor.', ephemeral: true });
+      return interaction.reply({ content: 'No encontré a ese usuario en el servidor.', flags: MessageFlags.Ephemeral });
     }
     if (!miembro.moderatable) {
-      return interaction.reply({ content: 'No puedo silenciarlo: tiene un rol superior al mío o es el dueño.', ephemeral: true });
+      return interaction.reply({ content: 'No puedo silenciarlo: tiene un rol superior al mío o es el dueño.', flags: MessageFlags.Ephemeral });
     }
 
     await miembro.timeout(minutos * 60 * 1000, razon);
