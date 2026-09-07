@@ -275,6 +275,7 @@ client.once(Events.ClientReady, async (c) => {
   for (const guild of c.guilds.cache.values()) {
     await guild.members.fetch().catch(() => {});
     await plantillas.actualizarPlantillas(guild);
+    unirseACanalVoz(guild);
   }
   console.log('Plantillas de equipos actualizadas.');
 });
@@ -316,6 +317,62 @@ client.on(Events.GuildMemberUpdate, (miembroAnterior, miembroNuevo) => {
   if (antes !== despues) {
     plantillas.actualizarPlantillas(miembroNuevo.guild).catch(() => {});
   }
+});
+
+const conexionesVoz = new Map();
+
+function unirseACanalVoz(guild) {
+  const config = configDe(guild.id);
+  const canalId = config.canalVoz;
+  if (!canalId) return false;
+
+  let canal;
+  try {
+    canal = guild.channels.cache.get(canalId);
+  } catch {}
+  if (!canal?.isVoiceBased?.()) return false;
+
+  const conexionActual = conexionesVoz.get(guild.id);
+  if (conexionActual?.state?.status === 'ready' && conexionActual.joinConfig.channelId === canalId) {
+    return true;
+  }
+  if (conexionActual) {
+    conexionActual.destroy();
+    conexionesVoz.delete(guild.id);
+  }
+
+  try {
+    const { joinVoiceChannel } = require('@discordjs/voice');
+    const conexion = joinVoiceChannel({
+      channelId: canal.id,
+      guildId: guild.id,
+      adapterCreator: guild.voiceAdapterCreator,
+      selfDeaf: false,
+      selfMute: false,
+    });
+    conexionesVoz.set(guild.id, conexion);
+    console.log(`Conectado al canal de voz ${canal.name} (${canal.id}) en ${guild.name}.`);
+    return true;
+  } catch (error) {
+    console.error(`No pude conectarme al canal de voz (${canalId}): ${String(error?.message || error)}`);
+    return false;
+  }
+}
+
+client.on(Events.VoiceStateUpdate, (anterior, nuevo) => {
+  if (!nuevo.member || nuevo.member.id !== client.user.id) return;
+  const config = configDe(nuevo.guild?.id || anterior.guild?.id);
+  if (!config.canalVoz) return;
+
+  const seFueSinCanal = anterior.channelId && !nuevo.channelId;
+  const seCambioDeCanal = nuevo.channelId && nuevo.channelId !== config.canalVoz;
+
+  if (seFueSinCanal || seCambioDeCanal) {
+    console.log('El bot salió del canal de voz; reconectando...');
+    setTimeout(() => unirseACanalVoz(nuevo.guild || anterior.guild), 4000);
+  }
+
+  if (!nuevo.channelId) conexionesVoz.delete(nuevo.guild?.id || anterior.guild?.id);
 });
 
 const pendientesPorUsuario = new Map();

@@ -1,5 +1,10 @@
 # CHANGELOG — WallStreet Bot
 
+## v14 — Bot en llaamada 24/7 (restaurado, con versión correcta)
+- El bot entra solo al canal de voz `1546580547310977095` al arrancar y se queda en llamada.
+- Si lo sacan, lo mueven a otro canal o se cae, se **reconecta solo** en unos segundos.
+- Dependencia `@discordjs/voice` en su versión correcta `^0.19.2`.
+
 ## v12 — Arreglo del crash al verificar
 - Corregido el fallo que tiraba el bot al aceptar una verificación (método `keyArray` eliminado en discord.js v14). Ahora roles, apodo, plantillas y mensaje de reclutado se aplican sin crashear.
 - Reemplazadas las respuestas `ephemeral` por `flags: MessageFlags.Ephemeral` (fin de las advertencias en logs).
