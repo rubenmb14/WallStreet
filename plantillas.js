@@ -40,14 +40,10 @@ function categoriasDe(config) {
   return { order };
 }
 
-function esRangoValidoParaEquipo(config, rankRoleId, teamRoleId, equipos) {
-  const equiposWs = new Set(Object.entries(config.equipos || {})
-    .filter(([label]) => !label.includes('ORGs'))
-    .map(([, id]) => id));
-  if (equiposWs.has(teamRoleId)) {
-    return Object.values(config.rangosWS || {}).includes(rankRoleId);
-  }
-  return Object.values(config.rangosOrgs || {}).includes(rankRoleId);
+function esRangoValidoParaEquipo(config, rankRoleId, equipoLabel) {
+  if (equipoLabel.includes('ORGs')) return Object.values(config.rangosOrgs || {}).includes(rankRoleId);
+  if (equipoLabel.includes('Retención')) return Object.values(config.rangosRetencion || {}).includes(rankRoleId);
+  return Object.values(config.rangosWS || {}).includes(rankRoleId);
 }
 
 function calcularPlantilla(guild, equipoLabel, equipoId, config) {
@@ -67,7 +63,7 @@ function calcularPlantilla(guild, equipoLabel, equipoId, config) {
       const rolesDeCategoria = Object.entries(mapping)
         .filter(([, c]) => c === categoria)
         .map(([id]) => id);
-      const tieneRango = rolesDeCategoria.some((id) => miembro.roles.cache.has(id) && esRangoValidoParaEquipo(config, id, equipoId, config.equipos));
+      const tieneRango = rolesDeCategoria.some((id) => miembro.roles.cache.has(id) && esRangoValidoParaEquipo(config, id, equipoLabel));
       if (tieneRango) {
         mejorCategoria = categoria;
         break;
@@ -86,7 +82,7 @@ function calcularPlantilla(guild, equipoLabel, equipoId, config) {
 
 function construirContenido(guild, equipoLabel, equipoId, config, datos) {
   const { order, porCategoria, total } = datos;
-  const familia = equipoLabel.includes('ORGs') ? 'ORGs' : 'WallStreet';
+  const familia = equipoLabel.includes('ORGs') ? 'ORGs' : equipoLabel.includes('Retención') ? 'Retención' : 'WallStreet';
   const lineas = [
     '📌**  PLANTILLA EQUIPO**',
     '',
