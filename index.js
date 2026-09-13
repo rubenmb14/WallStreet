@@ -382,6 +382,7 @@ function construirSelectRoles(config, tipo) {
     tipo === 'ORGs' ? config.rangosOrgs : tipo === 'Retención' ? config.rangosRetencion : config.rangosWS;
   const opciones = Object.entries(rangos || {})
     .filter(([, id]) => id)
+    .filter(([label]) => !(tipo === 'Retención' && label.includes('Master')))
     .map(([label, id]) => new StringSelectMenuOptionBuilder().setLabel(label).setValue(id));
 
   const placeholder =

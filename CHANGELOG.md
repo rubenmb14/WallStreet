@@ -1,5 +1,9 @@
 # CHANGELOG — WallStreet Bot
 
+## v17 — Sin Master en la verificación de Retención
+- La opción **Master ya no aparece** al elegir rango del equipo Retención.
+- En la plantilla de Retención, Master WallStreet sigue contando como Master.
+
 ## v16 — Retención con rangos propios en verificación
 - Al elegir el equipo **Retención** en verificación, ahora se ofrecen los **rangos de retención (⚡)** en vez de los de WallStreet.
 - Los apodos de los rangos de retención funcionan igual que los de WallStreet: AUX → `Aux.`, LIDER → `Lid.`, SUBLIDER → `Sub.`, MIEMBRO → solo equipo, PRUEBA → `Ret-T`.
