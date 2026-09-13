@@ -378,14 +378,22 @@ client.on(Events.VoiceStateUpdate, (anterior, nuevo) => {
 const pendientesPorUsuario = new Map();
 
 function construirSelectRoles(config, tipo) {
-  const rangos = tipo === 'ORGs' ? config.rangosOrgs : config.rangosWS;
+  const rangos =
+    tipo === 'ORGs' ? config.rangosOrgs : tipo === 'Retención' ? config.rangosRetencion : config.rangosWS;
   const opciones = Object.entries(rangos || {})
     .filter(([, id]) => id)
     .map(([label, id]) => new StringSelectMenuOptionBuilder().setLabel(label).setValue(id));
 
+  const placeholder =
+    tipo === 'ORGs'
+      ? '¿Cuál es tu rango en las ORGs?'
+      : tipo === 'Retención'
+      ? '¿Cuál es tu rango en Retención?'
+      : '¿Cuál es tu rango en WallStreet?';
+
   const select = new StringSelectMenuBuilder()
     .setCustomId('verificar_roles')
-    .setPlaceholder(tipo === 'ORGs' ? '¿Cuál es tu rango en las ORGs?' : '¿Cuál es tu rango en WallStreet?')
+    .setPlaceholder(placeholder)
     .setMinValues(1)
     .setMaxValues(1)
     .addOptions(opciones);
@@ -458,12 +466,18 @@ async function manejarSeleccionEquipo(interaction) {
   }
 
   const equipoOrgs = Object.entries(config.equipos || {}).find(([label]) => label.includes('ORGs'))?.[1];
+  const equipoRet = Object.entries(config.equipos || {}).find(([label]) => label.includes('Retención'))?.[1];
   const esOrgs = equipoOrgs !== undefined && equipoId === equipoOrgs;
-  pendiente.tipo = esOrgs ? 'ORGs' : 'WS';
+  const esRetencion = equipoRet !== undefined && equipoId === equipoRet;
+  pendiente.tipo = esOrgs ? 'ORGs' : esRetencion ? 'Retención' : 'WS';
   pendiente.equipo = [equipoId];
 
   return interaction.update({
-    content: esOrgs ? '📋 ¿Cuál es tu rango en las ORGs?' : '📋 ¿Cuál es tu rango en WallStreet?',
+    content: esOrgs
+      ? '📋 ¿Cuál es tu rango en las ORGs?'
+      : esRetencion
+      ? '📋 ¿Cuál es tu rango en Retención?'
+      : '📋 ¿Cuál es tu rango en WallStreet?',
     components: [construirSelectRoles(config, pendiente.tipo)],
   });
 }

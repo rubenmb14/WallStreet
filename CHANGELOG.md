@@ -1,5 +1,9 @@
 # CHANGELOG — WallStreet Bot
 
+## v16 — Retención con rangos propios en verificación
+- Al elegir el equipo **Retención** en verificación, ahora se ofrecen los **rangos de retención (⚡)** en vez de los de WallStreet.
+- Los apodos de los rangos de retención funcionan igual que los de WallStreet: AUX → `Aux.`, LIDER → `Lid.`, SUBLIDER → `Sub.`, MIEMBRO → solo equipo, PRUEBA → `Ret-T`.
+
 ## v15 — Roles de retención y equipos actualizados
 - Creados los roles de **retención** (con permisos de ORGs pero nombre estilo WallStreet) para Resp., ADM, AUX, LIDER, SUBLIDER, MIEMBRO y PRUEBA.
 - Los rangos de retención con 🔥 pasaron a usar el rayo ⚡; el resto mantiene su emoji.
