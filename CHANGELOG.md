@@ -1,5 +1,13 @@
 # CHANGELOG — WallStreet Bot
 
+## v15 — Roles de retención y equipos actualizados
+- Creados los roles de **retención** (con permisos de ORGs pero nombre estilo WallStreet) para Resp., ADM, AUX, LIDER, SUBLIDER, MIEMBRO y PRUEBA.
+- Los rangos de retención con 🔥 pasaron a usar el rayo ⚡; el resto mantiene su emoji.
+- Creado el equipo **⚡┋Equipo Retención**, colocado justo debajo de 🌟┋Equipo WS_Alpha.
+- En la verificación y en `/anuncio` ahora solo aparecen los equipos **WS_Bravo, Retención y ORGs** (se quitaron Delta, Omega y Alpha).
+- La plantilla del equipo Retención cuenta a sus miembros por los **rangos de retención (⚡)**, no por los de WallStreet.
+- El rango **Master** en la plantilla de Retención sigue usando **Master WallStreet**.
+
 ## v14 — Bot en llamada 24/7 (restaurado, con versión correcta)
 - El bot entra solo al canal de voz `1546580492961185952` al arrancar y se queda en llamada.
 - Si lo sacan, lo mueven a otro canal o se cae, se **reconecta solo** en unos segundos.
