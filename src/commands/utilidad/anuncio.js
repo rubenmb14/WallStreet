@@ -3,9 +3,8 @@ const { PermissionFlagsBits } = require('discord.js');
 
 const EQUIPOS = [
   { label: '🦬 WSB', value: '1545798733772628091' },
-  { label: '🐨 WSD', value: '1545798736419102741' },
-  { label: '👾 WSO', value: '1545798738914844703' },
-  { label: '🌟 WSA', value: '1545798743503147028' },
+  { label: '⚡ Ret', value: '1548750456463958167' },
+  { label: '🎭 ORGs', value: '1545936093902409819' },
 ];
 
 module.exports = {
